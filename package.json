@@ -7,7 +7,13 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "typecheck": "tsc --noEmit",
+    "db:start": "npx -y supabase@latest start",
+    "db:reset": "npx -y supabase@latest db reset",
+    "db:migrate": "npx -y supabase@latest migration up",
+    "db:types": "npx -y supabase@latest gen types typescript --local",
+    "seed": "powershell -ExecutionPolicy Bypass -File scripts/seed-dev.ps1"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

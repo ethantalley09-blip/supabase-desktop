@@ -15,13 +15,19 @@ Prereqs: Node 20+, Docker Desktop (for local Supabase), Rust toolchain (only for
 
 ```sh
 npm install
-npx supabase start          # local Postgres/auth stack via Docker
+npm run db:start            # local Postgres/auth stack via Docker
 cp .env.local.example .env.local
 # For local dev, set VITE_SUPABASE_URL=http://127.0.0.1:54321 and the anon
-# key printed by `npx supabase start`.
+# key printed by `npm run db:start`.
+npm run seed                # test users + activated org + demo project
 npm run dev                 # web preview on :1420
 npm run tauri dev           # native desktop shell
 ```
+
+Day-to-day commands: `npm run typecheck`, `npm run db:reset` (re-applies all
+migrations, wipes data — follow with `npm run seed`), `npm run db:migrate`.
+AI-assisted maintenance starts at `CLAUDE.md`; architecture and deferred
+work live in `docs/`.
 
 Migrations live in `supabase/migrations/` (numbered, apply in order via `npx supabase migration up` or `db reset`). After schema changes regenerate types:
 

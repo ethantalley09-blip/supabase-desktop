@@ -1,0 +1,167 @@
+import * as Tabs from '@radix-ui/react-tabs';
+import { ArrowLeft } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { ExportButton } from '@/features/export/ExportButton';
+import type { ExportDataset } from '@/features/export/types';
+import { useHasPermission } from '@/features/rbac/useHasPermission';
+import { CommsTab } from '@/features/comms/CommsTab';
+import { ComplianceTab } from '@/features/compliance/ComplianceTab';
+import { FundraisingTab } from '@/features/fundraising/FundraisingTab';
+import { useEntitlement } from '@/lib/entitlements/entitlements';
+import { supabase } from '@/lib/supabase/client';
+import { TurfTab } from '@/features/turf/TurfTab';
+import { OverviewTab } from './tabs/OverviewTab';
+import { TeamTab } from './tabs/TeamTab';
+import { useProject } from './useProjects';
+
+const tabTriggerClass =
+  'rounded-md px-3 py-1.5 text-sm text-neutral-500 hover:text-neutral-900 data-[state=active]:bg-white data-[state=active]:text-neutral-900 data-[state=active]:shadow-sm';
+
+export function ProjectDetailsPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { data: project, isLoading, error } = useProject(projectId);
+
+  // Paywalled tabs render only when the entitlement exists AND the viewer's
+  // role can see that module -- a canvasser shouldn't see the fundraising
+  // tab even on a project that paid for it. RLS is the enforcement layer;
+  // these checks are presentation.
+  const fundraisingEnt = useEntitlement(project?.org_id, 'fundraising_module', project?.id);
+  const complianceEnt = useEntitlement(project?.org_id, 'compliance_module', project?.id);
+  const canViewFundraising = useHasPermission(project?.org_id, 'fundraising.view');
+  const canViewCompliance = useHasPermission(project?.org_id, 'compliance.view');
+  const showFundraising = Boolean(fundraisingEnt.data && canViewFundraising.data);
+  const showCompliance = Boolean(complianceEnt.data && canViewCompliance.data);
+
+  if (isLoading) return <p className="p-8 text-sm text-neutral-500">Loading project…</p>;
+  if (error || !project)
+    return <p className="p-8 text-sm text-red-600">Project not found or access denied.</p>;
+
+  const exportDatasets: ExportDataset[] = [
+    ...(showFundraising
+      ? [
+          {
+            id: 'donations',
+            label: 'Donations',
+            getRows: async () => {
+              const { data, error: donationsError } = await supabase
+                .from('donations')
+                .select('amount_cents, donated_at, payment_method, donors(full_name, email, employer, occupation)')
+                .eq('project_id', project.id)
+                .order('donated_at');
+              if (donationsError) throw donationsError;
+              return (data ?? []).map((d: any) => ({
+                donor: d.donors?.full_name ?? '',
+                email: d.donors?.email ?? '',
+                employer: d.donors?.employer ?? '',
+                occupation: d.donors?.occupation ?? '',
+                amount_usd: (d.amount_cents / 100).toFixed(2),
+                donated_at: d.donated_at,
+                payment_method: d.payment_method ?? ''
+              }));
+            }
+          } satisfies ExportDataset
+        ]
+      : []),
+    {
+      id: 'overview',
+      label: 'Project overview',
+      getRows: () => [
+        {
+          name: project.name,
+          state: project.state ?? '',
+          status: project.status,
+          created_at: project.created_at
+        }
+      ]
+    },
+    {
+      id: 'team',
+      label: 'Team roster',
+      getRows: async () => {
+        const { data, error: teamError } = await supabase
+          .from('org_memberships')
+          .select('status, profiles(email, full_name), roles(name)')
+          .eq('org_id', project.org_id)
+          .eq('status', 'active');
+        if (teamError) throw teamError;
+        return (data ?? []).map((m: any) => ({
+          email: m.profiles?.email ?? '',
+          name: m.profiles?.full_name ?? '',
+          role: m.roles?.name ?? ''
+        }));
+      }
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-neutral-50">
+      <header className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3">
+        <div className="flex items-center gap-3">
+          <Link to="/" className="text-neutral-400 hover:text-neutral-700">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div>
+            <h1 className="text-sm font-semibold text-neutral-900">{project.name}</h1>
+            <p className="text-xs text-neutral-400">
+              {project.state ? `${project.state} · ` : ''}
+              {project.status}
+            </p>
+          </div>
+        </div>
+        <ExportButton datasets={exportDatasets} filePrefix={project.name.toLowerCase().replace(/\s+/g, '-')} />
+      </header>
+
+      <main className="mx-auto max-w-4xl px-4 py-6">
+        <Tabs.Root defaultValue="overview">
+          <Tabs.List className="mb-4 inline-flex gap-1 rounded-lg bg-neutral-100 p-1">
+            <Tabs.Trigger value="overview" className={tabTriggerClass}>
+              Overview
+            </Tabs.Trigger>
+            {showFundraising && (
+              <Tabs.Trigger value="fundraising" className={tabTriggerClass}>
+                Fundraising
+              </Tabs.Trigger>
+            )}
+            <Tabs.Trigger value="comms" className={tabTriggerClass}>
+              Comms
+            </Tabs.Trigger>
+            {showCompliance && (
+              <Tabs.Trigger value="compliance" className={tabTriggerClass}>
+                Compliance
+              </Tabs.Trigger>
+            )}
+            <Tabs.Trigger value="turf" className={tabTriggerClass}>
+              Turf Map
+            </Tabs.Trigger>
+            <Tabs.Trigger value="team" className={tabTriggerClass}>
+              Team
+            </Tabs.Trigger>
+          </Tabs.List>
+
+          <Tabs.Content value="overview">
+            <OverviewTab project={project} />
+          </Tabs.Content>
+          {showFundraising && (
+            <Tabs.Content value="fundraising">
+              <FundraisingTab project={project} />
+            </Tabs.Content>
+          )}
+          <Tabs.Content value="comms">
+            <CommsTab project={project} />
+          </Tabs.Content>
+          {showCompliance && (
+            <Tabs.Content value="compliance">
+              <ComplianceTab project={project} />
+            </Tabs.Content>
+          )}
+          <Tabs.Content value="turf">
+            <TurfTab project={project} />
+          </Tabs.Content>
+          <Tabs.Content value="team">
+            <TeamTab orgId={project.org_id} />
+          </Tabs.Content>
+        </Tabs.Root>
+      </main>
+    </div>
+  );
+}

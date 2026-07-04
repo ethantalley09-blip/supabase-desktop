@@ -3,3 +3,11 @@ node_modules
 src-tauri/target
 .DS_Store
 */.DS_Store
+.env.local
+.env*.local
+
+# Local Claude Code preview config (machine-specific paths)
+.claude/
+
+# Ad-hoc data exports produced while testing
+volunteer-drive-overview.csv

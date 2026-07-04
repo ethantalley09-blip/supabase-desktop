@@ -43,9 +43,9 @@ operational contract: follow it exactly.
   data) → `npm run seed` (rebuilds test users/org/project; idempotent).
 - Regenerate DB types after any migration:
   `npx -y supabase@latest gen types typescript --local | Out-File -FilePath src/lib/supabase/types.ts -Encoding utf8`
-- Verify before claiming done: `npm run typecheck` && `npm run build`,
-  then exercise the change in the browser (dev server on :1420 via
-  `npm run dev`). Direct SQL for assertions:
+- Verify before claiming done: `npm run typecheck` && `npm run test` &&
+  `npm run build`, then exercise the change in the browser (dev server on
+  :1420 via `npm run dev`). Direct SQL for assertions:
   `docker exec supabase_db_Lynx_Stuff psql -U postgres -d postgres -c "..."`
 - Test users (after seed): carol@example.com (Owner), finn@example.com
   (Canvasser), admin@lynx.app (SuperAdmin → /admin). All `password123`.

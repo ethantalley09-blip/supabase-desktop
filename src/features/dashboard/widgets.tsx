@@ -23,6 +23,16 @@ export function OrgDashboard({ orgId }: { orgId: string }) {
   const canTurf = useHasPermission(orgId, 'turf.view');
   const canCompliance = useHasPermission(orgId, 'compliance.view');
 
+  const { data: unread = 0 } = useQuery({
+    queryKey: ['unread-broadcasts', orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('my_unread_broadcasts', { p_org_id: orgId });
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    refetchInterval: 60_000
+  });
+
   const { data } = useQuery({
     queryKey: ['org-dashboard', orgId],
     queryFn: async () => {
@@ -62,7 +72,12 @@ export function OrgDashboard({ orgId }: { orgId: string }) {
       <StatCard key="raised" label="Raised" value={formatUsd(data?.raisedCents ?? 0)} sub="all projects" />
     ),
     canComms.data && (
-      <StatCard key="threads" label="Broadcasts" value={String(data?.threads ?? 0)} sub="org-wide" />
+      <StatCard
+        key="threads"
+        label="Broadcasts"
+        value={String(data?.threads ?? 0)}
+        sub={unread > 0 ? `${unread} unread` : 'all read'}
+      />
     ),
     canTurf.data && (
       <StatCard

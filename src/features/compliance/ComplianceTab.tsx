@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { AlertTriangle } from 'lucide-react';
 import type { Project } from '@/features/projects/useProjects';
 import { supabase } from '@/lib/supabase/client';
+import { PeriodReport } from './PeriodReport';
 
 type Ruleset = {
   id: string;
@@ -78,6 +79,15 @@ export function ComplianceTab({ project }: { project: Project }) {
           crossed $1,000 in lifetime donations.
         </p>
       )}
+
+      <PeriodReport
+        project={project}
+        itemizationThresholdCents={
+          typeof federal?.ruleset?.['itemization_threshold_cents'] === 'number'
+            ? (federal.ruleset['itemization_threshold_cents'] as number)
+            : null
+        }
+      />
 
       <RulesetCard
         title="Federal ruleset"

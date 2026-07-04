@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useProfile } from '@/features/auth/useProfile';
 import { OrgCreateWizard } from '@/features/orgs/OrgCreateWizard';
+import { PendingInvites } from '@/features/orgs/PendingInvites';
 import { OrgDashboard } from '@/features/dashboard/widgets';
 import { useMyOrganizations, type Organization } from '@/features/orgs/useOrganizations';
 import { ProjectCreateForm } from '@/features/projects/ProjectCreateForm';
@@ -13,7 +14,7 @@ import { useAuth } from '@/providers/AuthProvider';
 export function HomePage() {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
-  const { data: organizations, isLoading } = useMyOrganizations();
+  const { data: organizations, isLoading, isError, refetch } = useMyOrganizations();
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -33,11 +34,22 @@ export function HomePage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-10">
+        <PendingInvites />
+
         {isLoading && <p className="text-center text-sm text-neutral-500">Loading…</p>}
 
-        {!isLoading && organizations?.length === 0 && <OrgCreateWizard />}
+        {isError && (
+          <div className="mx-auto max-w-md rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-sm text-red-700">Couldn't load your organizations.</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </div>
+        )}
 
-        {!isLoading && organizations && organizations.length > 0 && (
+        {!isLoading && !isError && organizations?.length === 0 && <OrgCreateWizard />}
+
+        {!isLoading && !isError && organizations && organizations.length > 0 && (
           <div className="space-y-4">
             {organizations.map((org) => (
               <div key={org.id} className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">

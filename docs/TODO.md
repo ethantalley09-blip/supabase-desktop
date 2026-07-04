@@ -24,30 +24,33 @@ session can pick it up without extra context.
 
 ## Good next engineering tasks (unblocked)
 
-5. **Team invite flow.** `org_memberships.status='invited'` exists but
-   there's no UI to invite by email (needs a Supabase invite email or a
-   pending-invite table + accept screen). Currently members are added
-   directly (seed script does this).
-6. **Comms notifications surfacing.** Broadcasts only appear inside a
-   project's Comms tab; add an unread/notification indicator in the header
-   (count of messages without the viewer's acknowledgement) and optionally
-   Supabase Realtime subscriptions for live updates.
-7. **HR / Payroll modules.** Role templates + entitlement keys
+5. **HR / Payroll modules.** Role templates + entitlement keys
    (`hr_module`, `payroll_module`) exist and the SuperAdmin console can
    grant them, but there is no feature UI at all. Requirements were never
    specified — ask the owner what these should contain before building.
-8. **Geocoding at scale.** Census geocoder is sequential, 25/run, and only
+6. **Geocoding at scale.** Census geocoder is sequential, 25/run, and only
    as good as the address. For big voter files, switch to the Census batch
    endpoint (POST a CSV of up to 10k addresses) in an Edge Function.
-9. **Voter list dedupe/merge** on re-import (currently every import appends;
+7. **Voter list dedupe/merge** on re-import (currently every import appends;
    `import_batches` gives provenance but nothing detects duplicates).
-10. **Compliance reporting exports.** Donations export exists; itemized
-    FEC-style reports (by reporting period, using `lib/dates/dateRange.ts`
-    quarters + donor employer/occupation fields) are unbuilt.
-11. **Tests.** No automated test suite exists; verification has been manual
-    (browser + psql). Highest-value additions: RLS tests (pgTAP or a REST
-    harness reusing `scripts/seed-dev.ps1` patterns) and unit tests for
-    `dateRange.ts` and `parseFile.ts`.
-12. **Windows installer/signing + updater.** `tauri build` production
+8. **More tests.** vitest covers `dateRange.ts` and `parseFile.ts`
+   (`npm test`). Still worth adding: RLS/policy tests (pgTAP or a REST
+   harness reusing `scripts/seed-dev.ps1` patterns) and component tests.
+9. **Realtime comms.** Unread badge polls every 60s; Supabase Realtime
+   subscriptions on `messages` would make broadcasts live, and a header
+   notification indicator would surface them outside the Comms tab.
+10. **Email delivery for invites.** Invites are in-app only (invitee must
+    already have a free account and sees a pending-invite card). Wire
+    Supabase auth invite emails / `inviteUserByEmail` for outside invites.
+11. **Windows installer/signing + updater.** `tauri build` production
     bundling, code-signing cert, and the (currently disabled) updater
     config in `tauri.conf.json`.
+
+## Done since initial build (were in this list)
+
+- Team invite flow (invite by email → accept/decline) — `0016`,
+  `TeamTab`, `PendingInvites`.
+- Unread broadcast indicator — `my_unread_broadcasts` RPC + dashboard badge.
+- Itemized compliance period report with CSV/PDF export —
+  `compliance/PeriodReport.tsx`.
+- vitest unit suite for date ranges + voter field mapping.

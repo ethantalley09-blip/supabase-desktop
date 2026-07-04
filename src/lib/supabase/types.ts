@@ -922,6 +922,23 @@ export type Database = {
       }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      lookup_profile_for_invite: {
+        Args: { p_email: string; p_org_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
+      my_pending_invites: {
+        Args: never
+        Returns: {
+          membership_id: string
+          org_name: string
+          role_name: string
+        }[]
+      }
+      my_unread_broadcasts: { Args: { p_org_id: string }; Returns: number }
       project_org_id: { Args: { p_project_id: string }; Returns: string }
       shares_org_with: { Args: { p_profile_id: string }; Returns: boolean }
       thread_org_id: { Args: { p_thread_id: string }; Returns: string }

@@ -15,7 +15,7 @@ RLS policies compose both, e.g. recording a donation requires
 entitlement. SuperAdmins (`profiles.is_super_admin`) pass every check via
 `is_super_admin()`.
 
-## Data model (16 migrations, `supabase/migrations/`)
+## Data model (19 migrations, `supabase/migrations/`)
 
 ```
 profiles ──────────── 1:1 auth.users; is_super_admin flag (SQL-set only)
@@ -42,8 +42,25 @@ social_posts ──────── paid comms tier (impressions/engagement re
 import_batches ────── provenance for voter list uploads
 territories ───────── GeoJSON polygons + turf-computed area + canvasser
 voter_records ─────── one row per imported voter; full source row kept in
-                      `data jsonb`; name/address/lat/lng extracted+indexed
+                      `data jsonb`; name/address/lat/lng extracted+indexed.
+                      Field-status columns (no hard deletes): contact_status
+                      (active/moved/bad_address/deceased/do_not_contact, 0017),
+                      ballot_status (none/requested/returned, 0017),
+                      canvass_notes (free text, 0018)
 ```
+
+Two paywall keys were added on top of the base set: `ai_module` (org-scoped,
+gates the AI features) and the `ai.use` permission (0019, granted to
+Owner/Manager/Media templates).
+
+### Turf logic split (testability)
+
+`src/features/turf/route.ts` holds the pure, Supabase-free algorithms —
+city/ward extraction, walk-order optimization (nearest-neighbour + 2-opt),
+and balanced turf splitting (geographic k-means) — with unit tests in
+`route.test.ts`. `useTurf.ts` imports the Supabase client and re-exports
+route.ts, so the algorithms stay unit-testable without env/config. Keep new
+algorithmic code on this side of the split.
 
 ## Frontend layout (`src/`)
 
@@ -68,3 +85,28 @@ maps onto its payload and writes the same `entitlements` table everything
 already reads. Until then, SuperAdmins grant manually at `/admin`, and the
 project-creation add-on flows through the `add_project_addon` RPC
 (`granted_reason='addon_selected'` marks it as the unpaid stub path).
+
+## AI subsystem
+
+`supabase/functions/ai-assist/index.ts` is the single server-side proxy to the
+Anthropic API (model `claude-opus-4-8`). The API key lives in the
+`ANTHROPIC_API_KEY` secret and never reaches the browser. The function is the
+enforcement point for the AI paywall: it verifies the caller's JWT, confirms
+active org membership, and checks the org-scoped `ai_module` entitlement before
+generating. Client calls go through `useAiAssist()`
+(`src/lib/ai/useAiAssist.ts`), which selects behaviour by a `purpose` field.
+
+Adding an AI feature = add a `purpose` (edge function + hook) and gate the UI on
+`ai_module` + `ai.use`; no new tables or plumbing. Surfaces: the **AI Center**
+tab (`features/ai/AiCenterTab.tsx` — project-wide Ask-your-data / Campaign Coach
+/ Message Studio), outreach drafting + saved-contact booster
+(`features/outreach`), broadcast + reply drafting and per-message translation
+(`features/comms`), the Turf-tab note digest / Q&A / coach (`features/turf`), AI
+column-mapping in the import wizard, the Donor Message Studio
+(`fundraising/FundraisingTab.tsx`), and one-click `translate`
+(`features/ai/TranslateBar.tsx`) under every generated message. Data-driven
+purposes send only aggregate snapshots — `buildTurfSnapshot` (`turf/route.ts`,
+includes the preferred-language mix) and `buildFundraisingSnapshot`
+(`fundraising/fundraisingSnapshot.ts`) — never raw voter/donor rows. Compliance
+is deliberately AI-free (it is not legal automation). Guardrails live in the
+function's system prompts. See CLAUDE.md §"AI subsystem" for the recipe.

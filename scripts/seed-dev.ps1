@@ -64,6 +64,15 @@ Invoke-RestMethod -Method Patch -Uri "$base/rest/v1/organizations?id=eq.$orgId" 
   -Body (@{status = "active" } | ConvertTo-Json) | Out-Null
 Write-Host "org active + org_active entitlement granted."
 
+# AI module (org-scoped, like comms_paid_tier) so the AI features are testable
+# after seeding. Still needs the ANTHROPIC_API_KEY secret set for live calls.
+$aiEnt = Invoke-RestMethod -Method Get -Uri "$base/rest/v1/entitlements?org_id=eq.$orgId&key=eq.ai_module&select=id" -Headers $svcHeaders
+if (-not $aiEnt) {
+  Invoke-RestMethod -Method Post -Uri "$base/rest/v1/entitlements" -Headers $svcHeaders `
+    -Body (@{org_id = $orgId; key = "ai_module"; granted_reason = "manual_admin" } | ConvertTo-Json) | Out-Null
+  Write-Host "ai_module entitlement granted."
+}
+
 Write-Host "== Finn as Canvasser =="
 $mem = Invoke-RestMethod -Method Get -Uri "$base/rest/v1/org_memberships?org_id=eq.$orgId&profile_id=eq.$($finn.user.id)&select=id" -Headers $svcHeaders
 if (-not $mem) {

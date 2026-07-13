@@ -7,6 +7,9 @@ import { Label } from '@/components/ui/label';
 import type { Project } from '@/features/projects/useProjects';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
+import { useAiAssist } from '@/lib/ai/useAiAssist';
+import { OutreachBooster } from '@/features/outreach/OutreachBooster';
+import { TranslateBar } from '@/features/ai/TranslateBar';
 import { useAuth } from '@/providers/AuthProvider';
 import { SocialSchedulerPanel } from './paid/SocialSchedulerPanel';
 import {
@@ -22,6 +25,9 @@ import {
 export function CommsTab({ project }: { project: Project }) {
   const canBroadcast = useHasPermission(project.org_id, 'comms.broadcast');
   const paidTier = useEntitlement(project.org_id, 'comms_paid_tier');
+  const aiEnabled = useEntitlement(project.org_id, 'ai_module');
+  const canUseAi = useHasPermission(project.org_id, 'ai.use');
+  const showAi = Boolean(aiEnabled.data && canUseAi.data);
   const { data: threads } = useProjectThreads(project.org_id, project.id);
   const [composing, setComposing] = useState(false);
 
@@ -44,13 +50,17 @@ export function CommsTab({ project }: { project: Project }) {
       )}
 
       <div className="space-y-3">
-        {threads?.map((t) => <ThreadCard key={t.id} thread={t} />)}
+        {threads?.map((t) => (
+          <ThreadCard key={t.id} thread={t} orgId={project.org_id} projectId={project.id} showAi={showAi} />
+        ))}
         {threads?.length === 0 && (
           <p className="rounded-md border border-dashed border-neutral-300 p-4 text-sm text-neutral-400">
             No broadcasts yet.
           </p>
         )}
       </div>
+
+      <OutreachBooster project={project} />
 
       {paidTier.data ? (
         <SocialSchedulerPanel project={project} />
@@ -67,10 +77,26 @@ export function CommsTab({ project }: { project: Project }) {
 function BroadcastComposer({ project, onDone }: { project: Project; onDone: () => void }) {
   const { data: roles } = useOrgRoles(project.org_id);
   const createBroadcast = useCreateBroadcast();
+  const aiEnabled = useEntitlement(project.org_id, 'ai_module');
+  const canUseAi = useHasPermission(project.org_id, 'ai.use');
+  const assist = useAiAssist();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [targetRoleId, setTargetRoleId] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const draftWithAi = async () => {
+    setError(null);
+    const audience = roles?.find((r) => r.id === targetRoleId)?.name;
+    const result = await assist.mutateAsync({
+      orgId: project.org_id,
+      projectId: project.id,
+      purpose: 'broadcast',
+      audience: audience ? `${audience}s` : 'the whole team',
+      instructions: subject.trim() || 'A brief update for the field team.'
+    });
+    setBody(result.text);
+  };
 
   const submit = async () => {
     setError(null);
@@ -113,7 +139,20 @@ function BroadcastComposer({ project, onDone }: { project: Project; onDone: () =
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="body">Message</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="body">Message</Label>
+          {aiEnabled.data && canUseAi.data && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={draftWithAi}
+              disabled={assist.isPending}
+            >
+              {assist.isPending ? 'Drafting…' : 'Draft with AI'}
+            </Button>
+          )}
+        </div>
         <textarea
           id="body"
           rows={3}
@@ -123,6 +162,7 @@ function BroadcastComposer({ project, onDone }: { project: Project; onDone: () =
         />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {assist.isError && <p className="text-sm text-red-600">{(assist.error as Error).message}</p>}
       {createBroadcast.isError && (
         <p className="text-sm text-red-600">{(createBroadcast.error as Error).message}</p>
       )}
@@ -133,7 +173,17 @@ function BroadcastComposer({ project, onDone }: { project: Project; onDone: () =
   );
 }
 
-function ThreadCard({ thread }: { thread: Thread }) {
+function ThreadCard({
+  thread,
+  orgId,
+  projectId,
+  showAi
+}: {
+  thread: Thread;
+  orgId: string;
+  projectId: string;
+  showAi: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-lg border border-neutral-200 bg-white">
@@ -150,22 +200,45 @@ function ThreadCard({ thread }: { thread: Thread }) {
         </div>
         <span className="text-xs text-neutral-400">{open ? 'Hide' : 'Open'}</span>
       </button>
-      {open && <ThreadView threadId={thread.id} />}
+      {open && <ThreadView threadId={thread.id} orgId={orgId} projectId={projectId} showAi={showAi} />}
     </div>
   );
 }
 
-function ThreadView({ threadId }: { threadId: string }) {
+function ThreadView({
+  threadId,
+  orgId,
+  projectId,
+  showAi
+}: {
+  threadId: string;
+  orgId: string;
+  projectId: string;
+  showAi: boolean;
+}) {
   const { user } = useAuth();
   const { data: messages } = useThreadMessages(threadId);
   const reply = useReply();
   const acknowledge = useAcknowledge();
+  const draftReply = useAiAssist();
   const [replyBody, setReplyBody] = useState('');
 
   const sendReply = async () => {
     if (replyBody.trim().length === 0) return;
     await reply.mutateAsync({ threadId, body: replyBody.trim() });
     setReplyBody('');
+  };
+
+  const draftWithAi = async () => {
+    const result = await draftReply.mutateAsync({
+      orgId,
+      projectId,
+      purpose: 'broadcast',
+      instructions: replyBody.trim()
+        ? `Polish this reply to a team broadcast: ${replyBody.trim()}`
+        : 'Write a brief, friendly reply acknowledging the broadcast above.'
+    });
+    setReplyBody(result.text);
   };
 
   return (
@@ -199,6 +272,11 @@ function ThreadView({ threadId }: { threadId: string }) {
               </div>
             </div>
             <p className="mt-1 text-sm text-neutral-800">{m.body}</p>
+            {showAi && (
+              <div className="mt-2">
+                <TranslateBar orgId={orgId} projectId={projectId} text={m.body} />
+              </div>
+            )}
           </div>
         );
       })}
@@ -210,10 +288,18 @@ function ThreadView({ threadId }: { threadId: string }) {
           onChange={(e) => setReplyBody(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && sendReply()}
         />
+        {showAi && (
+          <Button variant="outline" size="sm" onClick={draftWithAi} disabled={draftReply.isPending}>
+            {draftReply.isPending ? 'Drafting…' : 'Draft with AI'}
+          </Button>
+        )}
         <Button size="sm" onClick={sendReply} disabled={reply.isPending}>
           Reply
         </Button>
       </div>
+      {draftReply.isError && (
+        <p className="text-sm text-red-600">{(draftReply.error as Error).message}</p>
+      )}
     </div>
   );
 }

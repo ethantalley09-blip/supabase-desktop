@@ -29,17 +29,7 @@ operational contract: follow it exactly.
    `PERMISSION_KEYS` AND grant it to the relevant template roles. Since
    `0003_roles.sql` is already applied, do NOT edit it — patch the templates
    in a new numbered migration instead (see `0019_ai_permission.sql`, which
-   adds `ai.use` to Owner/Manager/Media; `0024_role_tool_registry.sql`, which
-   extends it to Fundraiser/Canvasser). **AI tools are additionally curated
-   per role** by `src/features/rbac/toolRegistry.ts` — a pure, unit-tested
-   `TOOL_REGISTRY` mapping each AI tool to the permissions it requires beyond
-   the base `ai.use`, and `filterTools()`, the actual customization function.
-   `useAvailableTools(orgId)` (`useAvailableTools.ts`) fetches the caller's
-   full permission map in one RPC call (`get_my_permissions`, added in the
-   same migration) and runs it through the filter — used in
-   `AiCenterTab.tsx` to gate which of its 5 sections render and to show a
-   "Your AI tools" summary. To add a new AI tool: add one entry to
-   `TOOL_REGISTRY` with its required permissions; no other plumbing needed.
+   adds `ai.use` to Owner/Manager/Media).
 5. **Migrations are append-only** once pushed anywhere shared. Add a new
    numbered file in `supabase/migrations/`; never edit an applied one.
    After schema changes, regenerate types (workflow below) — type errors
@@ -84,15 +74,12 @@ operational contract: follow it exactly.
 - The first SuperAdmin is bootstrapped via direct SQL only (by design).
 - `zod.coerce` breaks react-hook-form resolver typing (zod 4): validate as
   string, convert manually (see FundraisingTab donation amount).
-- After adding a migration, `npm run typecheck` fails on that table/column
-  until you `db:reset` + regenerate types (workflow above) — this is
-  expected, not a bug, not a sign anything is broken.
 
 ## AI subsystem (`ai-assist` edge function)
 
 All AI (writing + analysis) goes through one Deno edge function,
 `supabase/functions/ai-assist/index.ts`, so the Anthropic key never reaches
-the browser. Model: `claude-opus-4-8` — don't change it without a reason.
+the browser. Model: `Codex-opus-4-8` — don't change it without a reason.
 The function enforces the paywall server-side (invariant #1): it verifies the
 caller's JWT, confirms active org membership, then checks the org-scoped
 `ai_module` entitlement before calling the model.
@@ -120,39 +107,9 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   data_qa, field_coach, import_mapping, translate, donor_message,
   segment_filter, content_pack, refine (`features/ai/RefineBar.tsx` —
   preset/custom rewrites under drafting outputs; parent holds the draft in
-  state via `onResult` so refine + translate chain). Also the **fundraising AI
-  suite** on `FundraisingTab.tsx` (migrations `0020_fundraising_ai.sql` +
-  `0021_fundraising_ai_2.sql`, hooks in `useFundraisingAi.ts`): ask_optimization
-  (`AskOptimizer.tsx`), churn_prediction + connector_scoring
-  (`DonorInsights.tsx`), compliant_variation (`CopyVariationTester.tsx` —
-  FEC-safe A/B copy, never fabricates deadlines/matching funds),
-  major_donor_escalation (`MajorDonorLadder.tsx`), fatigue_guard
-  (`FatigueGuard.tsx`), fec_sprint_plan (`SprintPlanner.tsx`), and
-  retention_sequence (`RetentionSequence.tsx` — thank-you / impact-update /
-  soft-second-ask, timed via `donor_retention_sequences`). A third round
-  (`0022_fundraising_ai_3.sql`) adds payment_recovery (`PaymentRecovery.tsx` —
-  recovers recurring revenue lost to card failures, a different mechanism
-  than behavioral churn), volunteer_donor_bridge (`VolunteerDonorBridge.tsx` —
-  cross-domain: asks active volunteers/canvassers who've never donated, citing
-  their real field contribution; only possible because Lynx has both turf and
-  fundraising data), momentum_alert (`MomentumDetector.tsx` — detects a real
-  donation-velocity spike computed client-side from actual recent donations,
-  never fabricated urgency), and recurring_upgrade (`RecurringUpgrade.tsx` —
-  anniversary-timed ask to raise a long-tenured recurring donor's monthly
-  gift). A fourth round (`0023_fundraising_ai_4.sql`) adds ltv_forecast
-  (`LtvForecast.tsx` — predicts a donor's long-term value tier from early
-  giving pattern, to guide staff time investment), donor_dedup
-  (`DonorDedup.tsx` — cross-source identity resolution; the AI only suggests a
-  match, a human always confirms before `useConfirmMerge` reassigns donations
-  and stamps `donors.merged_into_donor_id` — never a hard delete, per
-  invariant #2), and refund_risk_scan (`RefundWatchdog.tsx` — chargeback/
-  refund-rate early-warning, distinct from payment_recovery: that's declined
-  *future* charges, this is disputed *past* ones). None of this touches the
-  compliance domain, which stays
-  deliberately AI-free (invariant #6).
-  Model responses that must be JSON go through `src/lib/ai/extractJson.ts`
-  (import fixer, Smart Segments, Content Pack, and every fundraising-AI
-  purpose above). Deploy steps: `docs/DEPLOY_AI.md`. User guide:
+  state via `onResult` so refine + translate chain). Model responses that must
+  be JSON go through `src/lib/ai/extractJson.ts` (import fixer, Smart Segments,
+  Content Pack). Deploy steps: `docs/DEPLOY_AI.md`. User guide:
   `docs/AI_FEATURES.md`.
 - **Data-driven purposes send only aggregate snapshots, never raw rows.**
   `data_qa`/`field_coach` use `buildTurfSnapshot` (`turf/route.ts`) and

@@ -24,6 +24,10 @@ export type Donation = {
 // Compliance tools unlock once a project's lifetime donations cross this.
 export const COMPLIANCE_THRESHOLD_CENTS = 100_000;
 
+// Pure aggregate for the AI features (no Supabase dep); re-exported here so the
+// fundraising feature has a single import surface (mirrors turf/route.ts).
+export { buildFundraisingSnapshot, type FundraisingSnapshot } from './fundraisingSnapshot';
+
 export function useDonationTotal(projectId: string | undefined) {
   return useQuery({
     queryKey: ['donation-total', projectId],

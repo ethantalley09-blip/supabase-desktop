@@ -34,6 +34,70 @@ export type Database = {
   }
   public: {
     Tables: {
+      ask_optimizations: {
+        Row: {
+          created_at: string | null
+          donor_id: string
+          id: string
+          optimal_range_max: number
+          optimal_range_min: number
+          org_id: string
+          predicted_conversion_pct: number | null
+          project_id: string
+          reasoning: string | null
+          suggested_ask_cents: number
+          valid_until: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          donor_id: string
+          id?: string
+          optimal_range_max: number
+          optimal_range_min: number
+          org_id: string
+          predicted_conversion_pct?: number | null
+          project_id: string
+          reasoning?: string | null
+          suggested_ask_cents: number
+          valid_until?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          donor_id?: string
+          id?: string
+          optimal_range_max?: number
+          optimal_range_min?: number
+          org_id?: string
+          predicted_conversion_pct?: number | null
+          project_id?: string
+          reasoning?: string | null
+          suggested_ask_cents?: number
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ask_optimizations_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ask_optimizations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ask_optimizations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compliance_rulesets: {
         Row: {
           created_at: string
@@ -85,6 +149,72 @@ export type Database = {
             foreignKeyName: "compliance_status_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_variations: {
+        Row: {
+          base_message: string
+          conversions_a: number | null
+          conversions_b: number | null
+          conversions_c: number | null
+          created_at: string | null
+          id: string
+          org_id: string
+          project_id: string
+          test_ended_at: string | null
+          test_started_at: string | null
+          variant_a: string
+          variant_b: string
+          variant_c: string
+          winning_variant: string | null
+        }
+        Insert: {
+          base_message: string
+          conversions_a?: number | null
+          conversions_b?: number | null
+          conversions_c?: number | null
+          created_at?: string | null
+          id?: string
+          org_id: string
+          project_id: string
+          test_ended_at?: string | null
+          test_started_at?: string | null
+          variant_a: string
+          variant_b: string
+          variant_c: string
+          winning_variant?: string | null
+        }
+        Update: {
+          base_message?: string
+          conversions_a?: number | null
+          conversions_b?: number | null
+          conversions_c?: number | null
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          project_id?: string
+          test_ended_at?: string | null
+          test_started_at?: string | null
+          variant_a?: string
+          variant_b?: string
+          variant_c?: string
+          winning_variant?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_variations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "copy_variations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -145,6 +275,302 @@ export type Database = {
           },
         ]
       }
+      donor_churn_risk: {
+        Row: {
+          created_at: string | null
+          days_since_gift: number | null
+          donor_id: string
+          id: string
+          last_gift_at: string | null
+          org_id: string
+          predicted_churn_reason:
+            | Database["public"]["Enums"]["churn_reason"]
+            | null
+          reactivation_ask_cents: number | null
+          risk_score: number
+          updated_at: string | null
+          win_back_drafted_at: string | null
+          win_back_sent_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          days_since_gift?: number | null
+          donor_id: string
+          id?: string
+          last_gift_at?: string | null
+          org_id: string
+          predicted_churn_reason?:
+            | Database["public"]["Enums"]["churn_reason"]
+            | null
+          reactivation_ask_cents?: number | null
+          risk_score?: number
+          updated_at?: string | null
+          win_back_drafted_at?: string | null
+          win_back_sent_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          days_since_gift?: number | null
+          donor_id?: string
+          id?: string
+          last_gift_at?: string | null
+          org_id?: string
+          predicted_churn_reason?:
+            | Database["public"]["Enums"]["churn_reason"]
+            | null
+          reactivation_ask_cents?: number | null
+          risk_score?: number
+          updated_at?: string | null
+          win_back_drafted_at?: string | null
+          win_back_sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donor_churn_risk_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donor_churn_risk_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donor_ltv_forecasts: {
+        Row: {
+          confidence_label: string
+          created_at: string | null
+          donor_id: string
+          id: string
+          investment_recommendation: string
+          org_id: string
+          predicted_ltv_cents: number
+          rationale: string | null
+        }
+        Insert: {
+          confidence_label?: string
+          created_at?: string | null
+          donor_id: string
+          id?: string
+          investment_recommendation?: string
+          org_id: string
+          predicted_ltv_cents?: number
+          rationale?: string | null
+        }
+        Update: {
+          confidence_label?: string
+          created_at?: string | null
+          donor_id?: string
+          id?: string
+          investment_recommendation?: string
+          org_id?: string
+          predicted_ltv_cents?: number
+          rationale?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donor_ltv_forecasts_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donor_ltv_forecasts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donor_merge_suggestions: {
+        Row: {
+          created_at: string | null
+          donor_id_a: string
+          donor_id_b: string
+          id: string
+          matched_fields: Json | null
+          org_id: string
+          rationale: string | null
+          resolved_at: string | null
+          similarity_score: number
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          donor_id_a: string
+          donor_id_b: string
+          id?: string
+          matched_fields?: Json | null
+          org_id: string
+          rationale?: string | null
+          resolved_at?: string | null
+          similarity_score?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          donor_id_a?: string
+          donor_id_b?: string
+          id?: string
+          matched_fields?: Json | null
+          org_id?: string
+          rationale?: string | null
+          resolved_at?: string | null
+          similarity_score?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donor_merge_suggestions_donor_id_a_fkey"
+            columns: ["donor_id_a"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donor_merge_suggestions_donor_id_b_fkey"
+            columns: ["donor_id_b"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donor_merge_suggestions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donor_personas: {
+        Row: {
+          avg_gift_cents: number | null
+          cause_alignment: Json | null
+          connector_score: number | null
+          created_at: string | null
+          donor_id: string
+          estimated_capacity_cents: number
+          gift_velocity_per_month: number | null
+          id: string
+          last_analyzed_at: string | null
+          lifetime_value_cents: number | null
+          org_id: string
+          persona_label: Database["public"]["Enums"]["donor_persona_type"]
+          updated_at: string | null
+        }
+        Insert: {
+          avg_gift_cents?: number | null
+          cause_alignment?: Json | null
+          connector_score?: number | null
+          created_at?: string | null
+          donor_id: string
+          estimated_capacity_cents?: number
+          gift_velocity_per_month?: number | null
+          id?: string
+          last_analyzed_at?: string | null
+          lifetime_value_cents?: number | null
+          org_id: string
+          persona_label: Database["public"]["Enums"]["donor_persona_type"]
+          updated_at?: string | null
+        }
+        Update: {
+          avg_gift_cents?: number | null
+          cause_alignment?: Json | null
+          connector_score?: number | null
+          created_at?: string | null
+          donor_id?: string
+          estimated_capacity_cents?: number
+          gift_velocity_per_month?: number | null
+          id?: string
+          last_analyzed_at?: string | null
+          lifetime_value_cents?: number | null
+          org_id?: string
+          persona_label?: Database["public"]["Enums"]["donor_persona_type"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donor_personas_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donor_personas_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donor_retention_sequences: {
+        Row: {
+          created_at: string | null
+          donation_id: string | null
+          donor_id: string
+          id: string
+          message: string
+          org_id: string
+          scheduled_at: string
+          sent_at: string | null
+          stage: string
+        }
+        Insert: {
+          created_at?: string | null
+          donation_id?: string | null
+          donor_id: string
+          id?: string
+          message: string
+          org_id: string
+          scheduled_at: string
+          sent_at?: string | null
+          stage?: string
+        }
+        Update: {
+          created_at?: string | null
+          donation_id?: string | null
+          donor_id?: string
+          id?: string
+          message?: string
+          org_id?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donor_retention_sequences_donation_id_fkey"
+            columns: ["donation_id"]
+            isOneToOne: false
+            referencedRelation: "donations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donor_retention_sequences_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donor_retention_sequences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       donors: {
         Row: {
           address: Json | null
@@ -153,6 +579,7 @@ export type Database = {
           employer: string | null
           full_name: string
           id: string
+          merged_into_donor_id: string | null
           occupation: string | null
           org_id: string
         }
@@ -163,6 +590,7 @@ export type Database = {
           employer?: string | null
           full_name: string
           id?: string
+          merged_into_donor_id?: string | null
           occupation?: string | null
           org_id: string
         }
@@ -173,12 +601,65 @@ export type Database = {
           employer?: string | null
           full_name?: string
           id?: string
+          merged_into_donor_id?: string | null
           occupation?: string | null
           org_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "donors_merged_into_donor_id_fkey"
+            columns: ["merged_into_donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "donors_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_fatigue_signals: {
+        Row: {
+          donor_id: string
+          fatigue_risk_score: number
+          id: string
+          last_evaluated_at: string | null
+          org_id: string
+          recommendation: string | null
+          sends_last_30d: number
+        }
+        Insert: {
+          donor_id: string
+          fatigue_risk_score?: number
+          id?: string
+          last_evaluated_at?: string | null
+          org_id: string
+          recommendation?: string | null
+          sends_last_30d?: number
+        }
+        Update: {
+          donor_id?: string
+          fatigue_risk_score?: number
+          id?: string
+          last_evaluated_at?: string | null
+          org_id?: string
+          recommendation?: string | null
+          sends_last_30d?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_fatigue_signals_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_fatigue_signals_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -295,6 +776,108 @@ export type Database = {
           },
         ]
       }
+      fec_sprint_plans: {
+        Row: {
+          created_at: string | null
+          current_pace_cents: number
+          daily_plan: Json
+          deadline_date: string
+          goal_cents: number
+          id: string
+          org_id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_pace_cents?: number
+          daily_plan?: Json
+          deadline_date: string
+          goal_cents?: number
+          id?: string
+          org_id: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_pace_cents?: number
+          daily_plan?: Json
+          deadline_date?: string
+          goal_cents?: number
+          id?: string
+          org_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fec_sprint_plans_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fec_sprint_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fundraising_momentum_events: {
+        Row: {
+          baseline_avg_cents: number
+          detected_at: string | null
+          donation_count: number
+          donation_total_cents: number
+          id: string
+          org_id: string
+          project_id: string
+          recommendation: string | null
+          spike_multiplier: number
+          window_minutes: number
+        }
+        Insert: {
+          baseline_avg_cents?: number
+          detected_at?: string | null
+          donation_count?: number
+          donation_total_cents?: number
+          id?: string
+          org_id: string
+          project_id: string
+          recommendation?: string | null
+          spike_multiplier?: number
+          window_minutes?: number
+        }
+        Update: {
+          baseline_avg_cents?: number
+          detected_at?: string | null
+          donation_count?: number
+          donation_total_cents?: number
+          id?: string
+          org_id?: string
+          project_id?: string
+          recommendation?: string | null
+          spike_multiplier?: number
+          window_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fundraising_momentum_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fundraising_momentum_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_batches: {
         Row: {
           created_at: string
@@ -333,6 +916,54 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      major_donor_escalations: {
+        Row: {
+          ask_sequence: string | null
+          created_at: string | null
+          donor_id: string
+          id: string
+          org_id: string
+          readiness_score: number
+          signals: Json | null
+          suggested_ask_cents: number
+        }
+        Insert: {
+          ask_sequence?: string | null
+          created_at?: string | null
+          donor_id: string
+          id?: string
+          org_id: string
+          readiness_score?: number
+          signals?: Json | null
+          suggested_ask_cents?: number
+        }
+        Update: {
+          ask_sequence?: string | null
+          created_at?: string | null
+          donor_id?: string
+          id?: string
+          org_id?: string
+          readiness_score?: number
+          signals?: Json | null
+          suggested_ask_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "major_donor_escalations_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "major_donor_escalations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -573,6 +1204,67 @@ export type Database = {
           },
         ]
       }
+      payment_recovery_alerts: {
+        Row: {
+          detected_at: string | null
+          donor_id: string
+          failed_amount_cents: number
+          failure_type: string
+          id: string
+          org_id: string
+          project_id: string | null
+          recovered_at: string | null
+          recovery_message: string | null
+          status: string
+        }
+        Insert: {
+          detected_at?: string | null
+          donor_id: string
+          failed_amount_cents?: number
+          failure_type?: string
+          id?: string
+          org_id: string
+          project_id?: string | null
+          recovered_at?: string | null
+          recovery_message?: string | null
+          status?: string
+        }
+        Update: {
+          detected_at?: string | null
+          donor_id?: string
+          failed_amount_cents?: number
+          failure_type?: string
+          id?: string
+          org_id?: string
+          project_id?: string | null
+          recovered_at?: string | null
+          recovery_message?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_recovery_alerts_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_recovery_alerts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_recovery_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -687,6 +1379,156 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_upgrade_prompts: {
+        Row: {
+          current_monthly_cents: number
+          donor_id: string
+          id: string
+          months_active: number
+          org_id: string
+          prompted_at: string | null
+          responded: boolean
+          suggested_monthly_cents: number
+          upgrade_message: string
+        }
+        Insert: {
+          current_monthly_cents?: number
+          donor_id: string
+          id?: string
+          months_active?: number
+          org_id: string
+          prompted_at?: string | null
+          responded?: boolean
+          suggested_monthly_cents?: number
+          upgrade_message: string
+        }
+        Update: {
+          current_monthly_cents?: number
+          donor_id?: string
+          id?: string
+          months_active?: number
+          org_id?: string
+          prompted_at?: string | null
+          responded?: boolean
+          suggested_monthly_cents?: number
+          upgrade_message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_upgrade_prompts_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "donors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_upgrade_prompts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refund_records: {
+        Row: {
+          donation_id: string | null
+          id: string
+          org_id: string
+          reason: string | null
+          recorded_at: string | null
+          refunded_amount_cents: number
+        }
+        Insert: {
+          donation_id?: string | null
+          id?: string
+          org_id: string
+          reason?: string | null
+          recorded_at?: string | null
+          refunded_amount_cents?: number
+        }
+        Update: {
+          donation_id?: string | null
+          id?: string
+          org_id?: string
+          reason?: string | null
+          recorded_at?: string | null
+          refunded_amount_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_records_donation_id_fkey"
+            columns: ["donation_id"]
+            isOneToOne: false
+            referencedRelation: "donations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_records_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refund_risk_alerts: {
+        Row: {
+          analysis: string | null
+          baseline_refund_rate: number
+          created_at: string | null
+          current_refund_rate: number
+          id: string
+          org_id: string
+          project_id: string | null
+          refund_count: number
+          risk_level: string
+          total_refunded_cents: number
+          window_days: number
+        }
+        Insert: {
+          analysis?: string | null
+          baseline_refund_rate?: number
+          created_at?: string | null
+          current_refund_rate?: number
+          id?: string
+          org_id: string
+          project_id?: string | null
+          refund_count?: number
+          risk_level?: string
+          total_refunded_cents?: number
+          window_days?: number
+        }
+        Update: {
+          analysis?: string | null
+          baseline_refund_rate?: number
+          created_at?: string | null
+          current_refund_rate?: number
+          id?: string
+          org_id?: string
+          project_id?: string | null
+          refund_count?: number
+          risk_level?: string
+          total_refunded_cents?: number
+          window_days?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_risk_alerts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_risk_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -838,9 +1680,58 @@ export type Database = {
           },
         ]
       }
+      volunteer_donor_asks: {
+        Row: {
+          ask_message: string
+          contribution_summary: string | null
+          created_at: string | null
+          id: string
+          org_id: string
+          profile_id: string
+          sent_at: string | null
+        }
+        Insert: {
+          ask_message: string
+          contribution_summary?: string | null
+          created_at?: string | null
+          id?: string
+          org_id: string
+          profile_id: string
+          sent_at?: string | null
+        }
+        Update: {
+          ask_message?: string
+          contribution_summary?: string | null
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          profile_id?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "volunteer_donor_asks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "volunteer_donor_asks_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voter_records: {
         Row: {
           address_line: string | null
+          ballot_status: string
+          ballot_updated_at: string | null
+          canvass_notes: string | null
+          contact_status: string
           created_at: string
           data: Json
           full_name: string | null
@@ -853,6 +1744,10 @@ export type Database = {
         }
         Insert: {
           address_line?: string | null
+          ballot_status?: string
+          ballot_updated_at?: string | null
+          canvass_notes?: string | null
+          contact_status?: string
           created_at?: string
           data?: Json
           full_name?: string | null
@@ -865,6 +1760,10 @@ export type Database = {
         }
         Update: {
           address_line?: string | null
+          ballot_status?: string
+          ballot_updated_at?: string | null
+          canvass_notes?: string | null
+          contact_status?: string
           created_at?: string
           data?: Json
           full_name?: string | null
@@ -908,6 +1807,7 @@ export type Database = {
         Args: { p_key: string; p_project_id: string }
         Returns: undefined
       }
+      get_my_permissions: { Args: { p_org_id: string }; Returns: Json }
       get_project_donation_total: {
         Args: { p_project_id: string }
         Returns: number
@@ -944,7 +1844,19 @@ export type Database = {
       thread_org_id: { Args: { p_thread_id: string }; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      churn_reason:
+        | "budget_fatigue"
+        | "no_recent_contact"
+        | "candidate_change"
+        | "external_event"
+        | "low_engagement"
+      donor_persona_type:
+        | "recurring_small_progressive"
+        | "recurring_small_conservative"
+        | "major_donor_progressive"
+        | "major_donor_conservative"
+        | "grassroots_activist"
+        | "issue_focused"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1074,7 +1986,23 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      churn_reason: [
+        "budget_fatigue",
+        "no_recent_contact",
+        "candidate_change",
+        "external_event",
+        "low_engagement",
+      ],
+      donor_persona_type: [
+        "recurring_small_progressive",
+        "recurring_small_conservative",
+        "major_donor_progressive",
+        "major_donor_conservative",
+        "grassroots_activist",
+        "issue_focused",
+      ],
+    },
   },
 } as const
 

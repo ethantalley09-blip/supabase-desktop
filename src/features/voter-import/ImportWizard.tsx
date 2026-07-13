@@ -1,7 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useHasPermission } from '@/features/rbac/useHasPermission';
+import { extractJson } from '@/lib/ai/extractJson';
+import { useAiAssist } from '@/lib/ai/useAiAssist';
+import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { supabase } from '@/lib/supabase/client';
 import type { Json } from '@/lib/supabase/types';
 import { useAuth } from '@/providers/AuthProvider';
@@ -9,8 +14,20 @@ import { guessFieldMapping, parseVoterFile, type ParsedSheet } from './parseFile
 
 type FieldMapping = ReturnType<typeof guessFieldMapping>;
 
-export function ImportWizard({ projectId, onDone }: { projectId: string; onDone: () => void }) {
+export function ImportWizard({
+  projectId,
+  orgId,
+  onDone
+}: {
+  projectId: string;
+  orgId?: string;
+  onDone: () => void;
+}) {
   const { user } = useAuth();
+  const aiEnabled = useEntitlement(orgId, 'ai_module');
+  const canUseAi = useHasPermission(orgId, 'ai.use');
+  const suggest = useAiAssist();
+  const [aiNotes, setAiNotes] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const [filename, setFilename] = useState('');
   const [sheet, setSheet] = useState<ParsedSheet | null>(null);
@@ -36,6 +53,36 @@ export function ImportWizard({ projectId, onDone }: { projectId: string; onDone:
     } catch (e) {
       setParseError((e as Error).message);
     }
+  };
+
+  const showAiSuggest = Boolean(orgId && aiEnabled.data && canUseAi.data);
+
+  // AI column-mapping: send the headers + a few sample rows, apply the
+  // suggested mapping (only columns that actually exist), and surface any
+  // data-quality note. Exploits the rigidity of importers that just reject
+  // files a beginner can't hand-map.
+  const suggestMapping = async () => {
+    if (!sheet || !orgId) return;
+    setAiNotes(null);
+    const result = await suggest.mutateAsync({
+      orgId,
+      projectId,
+      purpose: 'import_mapping',
+      context: JSON.stringify({ columns: sheet.columns, sampleRows: sheet.rows.slice(0, 5) })
+    });
+    const parsed = extractJson(result.text);
+    if (!parsed) {
+      setAiNotes('Could not read the AI suggestion — map the fields manually below.');
+      return;
+    }
+    const pick = (v: unknown) => (typeof v === 'string' && sheet.columns.includes(v) ? v : '');
+    setMapping({
+      full_name: pick(parsed.full_name),
+      address_line: pick(parsed.address_line),
+      lat: pick(parsed.lat),
+      lng: pick(parsed.lng)
+    });
+    if (typeof parsed.notes === 'string' && parsed.notes.trim()) setAiNotes(parsed.notes.trim());
   };
 
   const importRows = useMutation({
@@ -103,10 +150,32 @@ export function ImportWizard({ projectId, onDone }: { projectId: string; onDone:
 
       {sheet && (
         <>
-          <p className="text-sm text-neutral-500">
-            {filename} — {sheet.rows.length} rows, {sheet.columns.length} columns. Map the key
-            fields; every source column is kept in the record either way.
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-neutral-500">
+              {filename} — {sheet.rows.length} rows, {sheet.columns.length} columns. Map the key
+              fields; every source column is kept in the record either way.
+            </p>
+            {showAiSuggest && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={suggestMapping}
+                disabled={suggest.isPending}
+              >
+                <Sparkles className="h-4 w-4" />
+                {suggest.isPending ? 'Reading…' : 'Suggest with AI'}
+              </Button>
+            )}
+          </div>
+          {suggest.isError && (
+            <p className="text-sm text-red-600">{(suggest.error as Error).message}</p>
+          )}
+          {aiNotes && (
+            <p className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900">
+              {aiNotes}
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             {(

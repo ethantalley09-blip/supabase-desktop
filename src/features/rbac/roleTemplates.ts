@@ -16,6 +16,7 @@ export const PERMISSION_KEYS = [
   'comms.view',
   'comms.manage',
   'comms.broadcast',
+  'ai.use',
   'compliance.view',
   'compliance.manage',
   'turf.view',

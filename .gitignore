@@ -6,6 +6,10 @@ src-tauri/target
 .env.local
 .env*.local
 
+# Edge-function secrets for local `supabase functions serve` — never commit
+supabase/.env
+supabase/functions/.env
+
 # Local Claude Code preview config (machine-specific paths)
 .claude/
 

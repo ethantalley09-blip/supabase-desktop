@@ -9,6 +9,7 @@ import { ComplianceTab } from '@/features/compliance/ComplianceTab';
 import { FundraisingTab } from '@/features/fundraising/FundraisingTab';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { supabase } from '@/lib/supabase/client';
+import { AiCenterTab } from '@/features/ai/AiCenterTab';
 import { TurfTab } from '@/features/turf/TurfTab';
 import { OverviewTab } from './tabs/OverviewTab';
 import { TeamTab } from './tabs/TeamTab';
@@ -29,8 +30,11 @@ export function ProjectDetailsPage() {
   const complianceEnt = useEntitlement(project?.org_id, 'compliance_module', project?.id);
   const canViewFundraising = useHasPermission(project?.org_id, 'fundraising.view');
   const canViewCompliance = useHasPermission(project?.org_id, 'compliance.view');
+  const aiEnt = useEntitlement(project?.org_id, 'ai_module');
+  const canUseAi = useHasPermission(project?.org_id, 'ai.use');
   const showFundraising = Boolean(fundraisingEnt.data && canViewFundraising.data);
   const showCompliance = Boolean(complianceEnt.data && canViewCompliance.data);
+  const showAi = Boolean(aiEnt.data && canUseAi.data);
 
   if (isLoading) return <p className="p-8 text-sm text-neutral-500">Loading project…</p>;
   if (error || !project)
@@ -133,6 +137,11 @@ export function ProjectDetailsPage() {
             <Tabs.Trigger value="turf" className={tabTriggerClass}>
               Turf Map
             </Tabs.Trigger>
+            {showAi && (
+              <Tabs.Trigger value="ai" className={tabTriggerClass}>
+                AI Center
+              </Tabs.Trigger>
+            )}
             <Tabs.Trigger value="team" className={tabTriggerClass}>
               Team
             </Tabs.Trigger>
@@ -157,6 +166,11 @@ export function ProjectDetailsPage() {
           <Tabs.Content value="turf">
             <TurfTab project={project} />
           </Tabs.Content>
+          {showAi && (
+            <Tabs.Content value="ai">
+              <AiCenterTab project={project} />
+            </Tabs.Content>
+          )}
           <Tabs.Content value="team">
             <TeamTab orgId={project.org_id} />
           </Tabs.Content>

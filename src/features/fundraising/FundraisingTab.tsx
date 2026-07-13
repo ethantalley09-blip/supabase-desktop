@@ -11,11 +11,30 @@ import {
   YAxis
 } from 'recharts';
 import { z } from 'zod';
+import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RefineBar } from '@/features/ai/RefineBar';
+import { TranslateBar } from '@/features/ai/TranslateBar';
+import { AskOptimizer } from './AskOptimizer';
+import { CopyVariationTester } from './CopyVariationTester';
+import { DonorInsights } from './DonorInsights';
+import { DonorDedup } from './DonorDedup';
+import { FatigueGuard } from './FatigueGuard';
+import { LtvForecast } from './LtvForecast';
+import { MajorDonorLadder } from './MajorDonorLadder';
+import { MomentumDetector } from './MomentumDetector';
+import { PaymentRecovery } from './PaymentRecovery';
+import { RecurringUpgrade } from './RecurringUpgrade';
+import { RefundWatchdog } from './RefundWatchdog';
+import { RetentionSequence } from './RetentionSequence';
+import { SprintPlanner } from './SprintPlanner';
+import { VolunteerDonorBridge } from './VolunteerDonorBridge';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
 import type { Project } from '@/features/projects/useProjects';
+import { useEntitlement } from '@/lib/entitlements/entitlements';
+import { useAiAssist } from '@/lib/ai/useAiAssist';
 import {
   DATE_RANGE_PRESETS,
   type DateRangePresetId,
@@ -49,6 +68,7 @@ type DonationFormValues = z.infer<typeof donationSchema>;
 export function FundraisingTab({ project }: { project: Project }) {
   const { data: total = 0 } = useDonationTotal(project.id);
   const { data: donations } = useDonations(project.id);
+  const { data: donors } = useOrgDonors(project.org_id);
   const canManage = useHasPermission(project.org_id, 'fundraising.manage');
   const [showForm, setShowForm] = useState(false);
   const [rangePreset, setRangePreset] = useState<DateRangePresetId>('all');
@@ -103,6 +123,24 @@ export function FundraisingTab({ project }: { project: Project }) {
       </div>
 
       {showForm && <DonationForm project={project} onDone={() => setShowForm(false)} />}
+
+      {/* AI Fundraising Suite */}
+      <DonorInsights orgId={project.org_id} projectId={project.id} />
+      <AskOptimizer orgId={project.org_id} projectId={project.id} donors={donors} />
+      <MajorDonorLadder orgId={project.org_id} projectId={project.id} donors={donors} />
+      <MomentumDetector orgId={project.org_id} projectId={project.id} donations={donations} />
+      <PaymentRecovery orgId={project.org_id} projectId={project.id} donors={donors} />
+      <VolunteerDonorBridge orgId={project.org_id} projectId={project.id} />
+      <RecurringUpgrade orgId={project.org_id} projectId={project.id} donors={donors} />
+      <LtvForecast orgId={project.org_id} projectId={project.id} donors={donors} />
+      <DonorDedup orgId={project.org_id} projectId={project.id} donors={donors} />
+      <RefundWatchdog orgId={project.org_id} projectId={project.id} />
+      <SprintPlanner orgId={project.org_id} projectId={project.id} currentTotalCents={total} />
+      <RetentionSequence orgId={project.org_id} projectId={project.id} donors={donors} />
+      <FatigueGuard orgId={project.org_id} projectId={project.id} />
+      <CopyVariationTester orgId={project.org_id} projectId={project.id} />
+
+      <DonorMessageStudio project={project} />
 
       <div className="flex items-center gap-2">
         <span className="text-xs uppercase tracking-wide text-neutral-400">Period</span>
@@ -168,6 +206,119 @@ export function FundraisingTab({ project }: { project: Project }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+const DONOR_KINDS = [
+  { value: 'thank_you', label: 'Thank-you note', verb: 'Write a warm thank-you note to a donor.' },
+  { value: 'ask', label: 'Donation ask', verb: 'Write a donation ask to a prospective donor.' }
+] as const;
+
+const DONOR_TONES = ['Warm', 'Formal', 'Casual', 'Urgent'];
+
+// Donor Message Studio (AI, premium). The last product domain to get AI:
+// compliant thank-you notes and asks, with one-click translation. Self-gates on
+// ai_module + ai.use so it simply doesn't render without both.
+function DonorMessageStudio({ project }: { project: Project }) {
+  const entitlement = useEntitlement(project.org_id, 'ai_module');
+  const canUseAi = useHasPermission(project.org_id, 'ai.use');
+  const assist = useAiAssist();
+  const [kind, setKind] = useState<(typeof DONOR_KINDS)[number]['value']>('thank_you');
+  const [tone, setTone] = useState(DONOR_TONES[0]);
+  const [brief, setBrief] = useState('');
+  const [draft, setDraft] = useState(''); // current message (refinable)
+  const [copied, setCopied] = useState(false);
+
+  if (!canUseAi.data || !entitlement.data) return null;
+
+  const generate = () => {
+    const verb = DONOR_KINDS.find((k) => k.value === kind)!.verb;
+    assist.mutate(
+      {
+        orgId: project.org_id,
+        projectId: project.id,
+        purpose: 'donor_message',
+        tone,
+        instructions: `${verb} Context: ${brief.trim() || 'a recent supporter of the campaign'}`
+      },
+      { onSuccess: (data) => setDraft(data.text) }
+    );
+  };
+
+  const copy = async () => {
+    if (!draft) return;
+    await navigator.clipboard.writeText(draft);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border border-violet-200 bg-white p-5">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-violet-600" />
+        <h3 className="text-sm font-semibold text-neutral-900">Donor Message Studio</h3>
+        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+          Premium
+        </span>
+      </div>
+      <p className="text-xs text-neutral-500">
+        Draft compliant thank-you notes and asks in seconds — then translate them in one click.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          <Label>Type</Label>
+          <select
+            className="flex h-9 rounded-md border border-neutral-300 bg-white px-3 text-sm"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as typeof kind)}
+          >
+            {DONOR_KINDS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Tone</Label>
+          <select
+            className="flex h-9 rounded-md border border-neutral-300 bg-white px-3 text-sm"
+            value={tone}
+            onChange={(e) => setTone(e.target.value)}
+          >
+            {DONOR_TONES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <textarea
+        rows={2}
+        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+        placeholder="Anything specific? e.g. Thank Maria for her $50 gift toward the field program."
+        value={brief}
+        onChange={(e) => setBrief(e.target.value)}
+      />
+      <Button size="sm" onClick={generate} disabled={assist.isPending}>
+        <Sparkles className="h-4 w-4" />
+        {assist.isPending ? 'Writing…' : 'Generate'}
+      </Button>
+      {assist.isError && <p className="text-sm text-red-600">{(assist.error as Error).message}</p>}
+      {draft && (
+        <div className="space-y-2">
+          <div className="whitespace-pre-wrap rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-800">
+            {draft}
+          </div>
+          <Button variant="outline" size="sm" onClick={copy}>
+            {copied ? 'Copied!' : 'Copy'}
+          </Button>
+          <RefineBar orgId={project.org_id} projectId={project.id} text={draft} onResult={setDraft} />
+          <TranslateBar orgId={project.org_id} projectId={project.id} text={draft} />
+        </div>
+      )}
     </div>
   );
 }

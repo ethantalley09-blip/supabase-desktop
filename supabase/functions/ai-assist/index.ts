@@ -42,7 +42,12 @@ type Purpose =
   | 'recurring_upgrade'
   | 'ltv_forecast'
   | 'donor_dedup'
-  | 'refund_risk_scan';
+  | 'refund_risk_scan'
+  | 'funding_runway'
+  | 'network_ask'
+  | 'reactivation_sequence'
+  | 'issue_response'
+  | 'emergency_ask';
 
 type Body = {
   orgId: string;
@@ -398,7 +403,85 @@ Rules:
 - Never accuse the campaign of wrongdoing; state pattern and next step only.
 - Return JSON only.`;
 
+const FUNDING_RUNWAY_SYSTEM = `You are a campaign finance strategist. You receive a PRE-COMPUTED cash-runway projection (the math is already done in-app) plus aggregate donor-segment counts, and you recommend 3 concrete strategies to close the projected shortfall.
+
+Return ONLY a JSON object:
+{"strategy_a":{"segment":"...","ask_cents":0,"rationale":"...","email_subject":"...","email_body":"..."},
+ "strategy_b":{"segment":"...","ask_cents":0,"rationale":"...","email_subject":"...","email_body":"..."},
+ "strategy_c":{"description":"...","rationale":"..."}}
+
+Rules:
+- Strategies A and B each target a DIFFERENT donor segment from the counts provided, with a realistic per-donor ask grounded in that segment's average gift.
+- Strategy C is a non-ask option: shift or split the planned expense, trim burn, or re-time the spend. Explain the trade-off honestly.
+- Email drafts: honest and specific about why the money is needed and by when. NEVER invent matching funds, fake deadlines, or manufactured urgency — the shortfall date provided is the real deadline; use it.
+- Do not promise what the campaign will do with funds beyond what the context states.
+- Return JSON only.`;
+
+const NETWORK_ASK_SYSTEM = `You draft a short personal fundraising note that an existing donor will forward to people they personally know (their coworkers, neighbors, family — a relationship the donor named). You write in the DONOR's voice, not the campaign's.
+
+Return ONLY a JSON object: {"ask_text":"...","share_tip":"..."}
+
+Rules:
+- First person, from the donor: why THEY gave, in plain warm language. 3-5 sentences max — it must read like a text from a friend, not a campaign blast.
+- Reference the named relationship naturally (e.g. something a coworker would say to coworkers).
+- Include the donor's real reason/context if provided; never invent personal details or a giving history they didn't state.
+- No pressure tactics, no fake urgency, no invented matching funds. Suggest a modest, unspecified gift ("even a few dollars helps") unless an amount is provided.
+- share_tip: one sentence of practical advice on how/where to share it (e.g. "Send it as a personal text, not a group chat — replies triple.").
+- Return JSON only.`;
+
+const REACTIVATION_SYSTEM = `You draft a 3-variant win-back sequence for one lapsed donor. Each variant takes a different honest angle; staff will pick ONE to send, or send them as a staged sequence.
+
+Return ONLY a JSON object:
+{"impact":{"subject":"...","body":"..."},
+ "urgency":{"subject":"...","body":"..."},
+ "peer":{"subject":"...","body":"..."}}
+
+Rules:
+- impact: what their past support concretely enabled — only claims supported by the context provided; if no accomplishments are given, speak to what the campaign is working on now, not invented wins.
+- urgency: what's genuinely time-sensitive from the context (election date, filing deadline, budget gap). NEVER fabricate deadlines or matching funds.
+- peer: warm belonging angle — they've been part of this; the door is open. No guilt, no shame about the lapse, never mention "we noticed you stopped giving".
+- Each body 4-6 sentences, first person from the campaign, references their actual giving relationship (tenure/typical gift) only as provided.
+- Suggested re-entry ask should be AT or slightly BELOW their typical gift — a lapsed donor is re-onboarded, not squeezed.
+- Return JSON only.`;
+
+const ISSUE_RESPONSE_SYSTEM = `A real campaign event just happened (an endorsement, a news story, an opponent statement, a milestone). You produce a coordinated rapid-response fundraising pack across channels, grounded ONLY in the event as described.
+
+Return ONLY a JSON object:
+{"email_a":{"angle":"...","subject":"...","body":"..."},
+ "email_b":{"angle":"...","subject":"...","body":"..."},
+ "sms":"...",
+ "social":"..."}
+
+Rules:
+- email_a and email_b take two DIFFERENT angles on the same event (e.g. momentum vs. stakes). Bodies 4-6 sentences.
+- sms: under 160 characters, no links placeholder needed, conversational.
+- social: one platform-neutral post, under 280 characters.
+- Describe the event exactly as given — never exaggerate what happened, invent quotes, endorsements, poll numbers, or opponent statements beyond the description.
+- Urgency must come from the real event's real timing, not manufactured countdowns. No fabricated matching funds.
+- No attacks on private individuals; criticism of public figures sticks to what the description states.
+- Return JSON only.`;
+
+const EMERGENCY_ASK_SYSTEM = `The campaign has a REAL, stated funding gap with a REAL deadline (both provided). You draft the emergency ask pack staff will send to their warmest donors today.
+
+Return ONLY a JSON object:
+{"email":{"subject":"...","body":"..."},
+ "sms":"...",
+ "call_script":"..."}
+
+Rules:
+- The urgency IS real here — use it, but only the gap, deadline, and reason provided. NEVER add invented stakes, matching funds, or consequences beyond what the context states.
+- Be specific: name the amount needed and the date. Specific honest asks outperform vague panic.
+- email body 4-6 sentences; sms under 160 characters; call_script = 4-6 natural spoken lines a volunteer can read aloud, including a pause for the donor's answer.
+- Tone: direct and calm, not desperate. Donors respond to a campaign in control of its numbers.
+- Suggest a concrete per-donor amount ONLY if the context provides an average gift to anchor on.
+- Return JSON only.`;
+
 function systemFor(purpose: Purpose): string {
+  if (purpose === 'emergency_ask') return EMERGENCY_ASK_SYSTEM;
+  if (purpose === 'funding_runway') return FUNDING_RUNWAY_SYSTEM;
+  if (purpose === 'network_ask') return NETWORK_ASK_SYSTEM;
+  if (purpose === 'reactivation_sequence') return REACTIVATION_SYSTEM;
+  if (purpose === 'issue_response') return ISSUE_RESPONSE_SYSTEM;
   if (purpose === 'refine') return REFINE_SYSTEM;
   if (purpose === 'major_donor_escalation') return MAJOR_DONOR_SYSTEM;
   if (purpose === 'fatigue_guard') return FATIGUE_GUARD_SYSTEM;
@@ -477,7 +560,7 @@ function buildPrompt(b: Body): string {
   }
 
   if (b.purpose === 'churn_prediction') {
-    return `Donor history and current status (JSON):\n${b.context}\n\nPred ict churn and draft a win-back message.`;
+    return `Donor history and current status (JSON):\n${b.context}\n\nPredict churn and draft a win-back message.`;
   }
 
   if (b.purpose === 'connector_scoring') {
@@ -530,6 +613,26 @@ function buildPrompt(b: Body): string {
 
   if (b.purpose === 'refund_risk_scan') {
     return `Refund/chargeback rate vs. baseline (JSON):\n${b.context}\n\nAssess the risk level.`;
+  }
+
+  if (b.purpose === 'funding_runway') {
+    return `Pre-computed runway projection and donor segment counts (JSON):\n${b.context}\n\nRecommend 3 strategies to close the shortfall.`;
+  }
+
+  if (b.purpose === 'network_ask') {
+    return `Donor context and named relationship (JSON):\n${b.context}\n\nDraft the personal forwardable ask in the donor's voice.`;
+  }
+
+  if (b.purpose === 'reactivation_sequence') {
+    return `Lapsed donor's giving relationship and campaign context (JSON):\n${b.context}\n\nDraft the 3-variant win-back sequence.`;
+  }
+
+  if (b.purpose === 'issue_response') {
+    return `Event (JSON):\n${b.context}\n\nProduce the multi-channel rapid-response pack.`;
+  }
+
+  if (b.purpose === 'emergency_ask') {
+    return `Funding gap, deadline, and reason (JSON):\n${b.context}\n\nDraft the emergency ask pack (email + SMS + call script).`;
   }
 
   const lines: string[] = [];

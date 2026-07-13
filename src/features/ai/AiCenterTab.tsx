@@ -14,17 +14,11 @@ import { buildTurfSnapshot, dominantVoterLanguage, useTerritories, useVoterRecor
 import { useAvailableTools } from '@/features/rbac/useAvailableTools';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { useAiAssist, type AiPurpose } from '@/lib/ai/useAiAssist';
+import { AiDashboard } from './AiDashboard';
 import { ContentPack } from './ContentPack';
 import { RefineBar } from './RefineBar';
 import { SmartSegments } from './SmartSegments';
 import { TranslateBar } from './TranslateBar';
-
-const CATEGORY_LABEL: Record<string, string> = {
-  general: 'General',
-  turf: 'Turf',
-  comms: 'Comms',
-  fundraising: 'Fundraising'
-};
 
 const ASK_EXAMPLES = [
   'How many ballots are still outstanding?',
@@ -47,7 +41,7 @@ const TONES = ['Warm', 'Urgent', 'Casual', 'Formal'];
 // only when the org has the ai_module entitlement AND the viewer has ai.use
 // (gated in ProjectDetailsPage).
 export function AiCenterTab({ project }: { project: Project }) {
-  const { tools, byCategory } = useAvailableTools(project.org_id);
+  const { tools } = useAvailableTools(project.org_id);
   const has = (id: string) => tools.some((t) => t.id === id);
   const { data: voters } = useVoterRecords(project.id);
   const { data: territories } = useTerritories(project.id);
@@ -120,29 +114,12 @@ export function AiCenterTab({ project }: { project: Project }) {
         data — nothing is shared outside your organization.
       </p>
 
-      {/* Your AI Tools — makes the per-role customization visible, not just enforced */}
-      <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-          Your AI tools ({tools.length})
-        </p>
-        <p className="mt-0.5 text-xs text-neutral-500">
-          Curated for your role — other roles on your team see a different set below.
-        </p>
-        <div className="mt-2 space-y-1.5">
-          {(Object.keys(byCategory) as (keyof typeof byCategory)[])
-            .filter((cat) => byCategory[cat].length > 0)
-            .map((cat) => (
-              <p key={cat} className="text-xs text-neutral-600">
-                <span className="font-medium text-neutral-800">{CATEGORY_LABEL[cat]}:</span>{' '}
-                {byCategory[cat].map((t) => t.label).join(', ')}
-              </p>
-            ))}
-          {tools.length === 0 && <p className="text-xs text-neutral-400">No AI tools available to your role yet.</p>}
-        </div>
-      </div>
+      {/* Per-role dashboard: category tabs + drag-and-drop arrangement */}
+      <AiDashboard orgId={project.org_id} />
 
       {/* Ask your data */}
       {has('ask_data') && (
+      <div id="tool-ask_data">
       <Card icon={<Search className="h-4 w-4 text-violet-600" />} title="Ask your data">
         <p className="text-xs text-neutral-500">
           Ask anything about your voters and fundraising in plain English — no filters to build.
@@ -174,13 +151,19 @@ export function AiCenterTab({ project }: { project: Project }) {
         {ask.isError && <p className="text-sm text-red-600">{(ask.error as Error).message}</p>}
         {ask.data && <Answer>{ask.data.text}</Answer>}
       </Card>
+      </div>
       )}
 
       {/* Smart Segments — describe a universe, get an actionable walk list */}
-      {has('smart_segments') && <SmartSegments project={project} />}
+      {has('smart_segments') && (
+        <div id="tool-smart_segments">
+          <SmartSegments project={project} />
+        </div>
+      )}
 
       {/* Field Coach */}
       {has('campaign_coach') && (
+      <div id="tool-campaign_coach">
       <Card icon={<Compass className="h-4 w-4 text-violet-600" />} title="Campaign Coach">
         <div className="flex items-center justify-between">
           <p className="text-xs text-neutral-500">Not sure what to do next? Get your top 3 priorities right now.</p>
@@ -196,10 +179,12 @@ export function AiCenterTab({ project }: { project: Project }) {
         {coach.isError && <p className="text-sm text-red-600">{(coach.error as Error).message}</p>}
         {coach.data && <Answer tone="violet">{coach.data.text}</Answer>}
       </Card>
+      </div>
       )}
 
       {/* Message Studio */}
       {has('message_studio') && (
+      <div id="tool-message_studio">
       <Card icon={<MessageSquare className="h-4 w-4 text-violet-600" />} title="Message Studio">
         <p className="text-xs text-neutral-500">Draft on-message copy for any channel in seconds.</p>
         <div className="flex flex-wrap items-end gap-3">
@@ -265,10 +250,15 @@ export function AiCenterTab({ project }: { project: Project }) {
           </div>
         )}
       </Card>
+      </div>
       )}
 
       {/* Content Pack — one brief, every channel */}
-      {has('content_pack') && <ContentPack project={project} defaultLanguage={dominantLanguage} />}
+      {has('content_pack') && (
+        <div id="tool-content_pack">
+          <ContentPack project={project} defaultLanguage={dominantLanguage} />
+        </div>
+      )}
     </div>
   );
 }

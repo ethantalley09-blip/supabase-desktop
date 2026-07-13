@@ -147,8 +147,20 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   and stamps `donors.merged_into_donor_id` — never a hard delete, per
   invariant #2), and refund_risk_scan (`RefundWatchdog.tsx` — chargeback/
   refund-rate early-warning, distinct from payment_recovery: that's declined
-  *future* charges, this is disputed *past* ones). None of this touches the
-  compliance domain, which stays
+  *future* charges, this is disputed *past* ones). A growth round
+  (`0025_growth_ai.sql`, hooks in `useGrowthAi.ts`, pure math in `runway.ts` +
+  `runway.test.ts` — computeRunway/scoreLapse/warmSegment run client-side with
+  NO AI call) adds funding_runway (`FundingRunway.tsx` — day-by-day cash
+  projection from real donation pace; AI is only asked for closing strategies
+  once a shortfall is actually projected), network_ask
+  (`NetworkMultiplier.tsx` — donor-voice forwardable ask; deliberately no
+  contact scraping, the donor names the relationship), reactivation_sequence
+  (`ReactivationCenter.tsx` — lapse scored against each donor's OWN giving
+  rhythm, distinct from churn_prediction's flat risk score; 3-angle win-back
+  impact/urgency/peer), and issue_response (`IssueResponseEngine.tsx` — real
+  event → 2 email angles + SMS + social, grounded only in the staff-written
+  description; warm segment = donors who gave in last 45 days, computed
+  client-side). None of this touches the compliance domain, which stays
   deliberately AI-free (invariant #6).
   Model responses that must be JSON go through `src/lib/ai/extractJson.ts`
   (import fixer, Smart Segments, Content Pack, and every fundraising-AI
@@ -174,7 +186,7 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   `src/features/turf/route.ts` (city/ward parsing, walk-order optimization,
   turf splitting) is unit-tested in `route.test.ts`; `useTurf.ts` re-exports
   it. Follow this split for new algorithmic code.
-- **Migrations are numbered; we're at `0019`.** Recent additions to
+- **Migrations are numbered; we're at `0025`.** Recent additions to
   `voter_records`: `contact_status` / `ballot_status` / `ballot_updated_at`
   (0017), `canvass_notes` (0018). New entitlement key `ai_module` and
   permission `ai.use` are documented in invariants #3 and #4.

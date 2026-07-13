@@ -54,7 +54,12 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'donor_message_studio', label: 'Donor Message Studio', description: 'Thank-you notes and donation asks.', category: 'fundraising', requires: ['fundraising.manage'] },
   { id: 'ltv_forecast', label: 'LTV Forecast', description: 'Predicts a donor\'s long-term value tier.', category: 'fundraising', requires: ['fundraising.manage'] },
   { id: 'donor_dedup', label: 'Donor Identity Resolution', description: 'Suggests cross-source donor merges.', category: 'fundraising', requires: ['fundraising.manage'] },
-  { id: 'refund_watchdog', label: 'Refund Watchdog', description: 'Chargeback/refund-rate early warning.', category: 'fundraising', requires: ['fundraising.manage'] }
+  { id: 'refund_watchdog', label: 'Refund Watchdog', description: 'Chargeback/refund-rate early warning.', category: 'fundraising', requires: ['fundraising.manage'] },
+  { id: 'funding_runway', label: 'Funding Runway', description: 'Predicts cash shortfalls weeks ahead, with closing strategies.', category: 'fundraising', requires: ['fundraising.manage'] },
+  { id: 'network_multiplier', label: 'Network Multiplier', description: 'Donor-voice asks to forward to their own people.', category: 'fundraising', requires: ['fundraising.manage'] },
+  { id: 'reactivation_center', label: 'Reactivation Center', description: 'Rhythm-based lapse detection + 3-angle win-backs.', category: 'fundraising', requires: ['fundraising.manage'] },
+  { id: 'issue_response', label: 'Issue Response Engine', description: 'News event -> instant multi-channel response pack.', category: 'fundraising', requires: ['fundraising.manage'] },
+  { id: 'emergency_ask', label: 'Emergency Ask Generator', description: 'Real gap + real deadline -> same-day email/SMS/call-script pack.', category: 'fundraising', requires: ['fundraising.manage'] }
 ];
 
 // The customized filter: given a flat permission map (as returned by the
@@ -80,4 +85,38 @@ export function toolsByCategory(tools: ToolDefinition[]): Record<ToolCategory, T
   const grouped: Record<ToolCategory, ToolDefinition[]> = { general: [], turf: [], comms: [], fundraising: [] };
   for (const tool of tools) grouped[tool.category].push(tool);
   return grouped;
+}
+
+// A user's saved dashboard layout: explicit card order + hidden tool ids.
+// Presentation only — never widens what filterTools() allowed.
+export type DashboardLayout = { order?: string[]; hidden?: string[] };
+
+// Apply a personal layout to the role's allowed tools: hidden ones move to
+// `hiddenTools`, the rest sort by the saved order; tools the user has never
+// arranged (e.g. newly shipped ones) append at the end in registry order so
+// new features are discoverable, not invisible.
+export function arrangeTools(
+  tools: ToolDefinition[],
+  layout: DashboardLayout | null | undefined
+): { visible: ToolDefinition[]; hiddenTools: ToolDefinition[] } {
+  const hidden = new Set(layout?.hidden ?? []);
+  const order = layout?.order ?? [];
+  const rank = new Map(order.map((id, i) => [id, i]));
+  const visible = tools
+    .filter((t) => !hidden.has(t.id))
+    .sort((a, b) => (rank.get(a.id) ?? order.length + tools.indexOf(a)) - (rank.get(b.id) ?? order.length + tools.indexOf(b)));
+  return { visible, hiddenTools: tools.filter((t) => hidden.has(t.id)) };
+}
+
+// Move `dragId` so it lands where `targetId` currently sits (dragging down
+// passes the target, dragging up displaces it — standard list-reorder feel).
+// Returns the new full order (all visible ids, explicit) ready to persist.
+export function reorderTools(visibleIds: string[], dragId: string, targetId: string): string[] {
+  const from = visibleIds.indexOf(dragId);
+  const to = visibleIds.indexOf(targetId);
+  if (from === -1 || to === -1 || from === to) return visibleIds;
+  const next = [...visibleIds];
+  next.splice(from, 1);
+  next.splice(to, 0, dragId);
+  return next;
 }

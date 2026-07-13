@@ -28,7 +28,12 @@ export type AiPurpose =
   | 'recurring_upgrade'
   | 'ltv_forecast'
   | 'donor_dedup'
-  | 'refund_risk_scan';
+  | 'refund_risk_scan'
+  | 'funding_runway'
+  | 'network_ask'
+  | 'reactivation_sequence'
+  | 'issue_response'
+  | 'emergency_ask';
 
 export type AiAssistInput = {
   orgId: string;

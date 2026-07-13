@@ -21,8 +21,13 @@ import { AskOptimizer } from './AskOptimizer';
 import { CopyVariationTester } from './CopyVariationTester';
 import { DonorInsights } from './DonorInsights';
 import { DonorDedup } from './DonorDedup';
+import { EmergencyAsk } from './EmergencyAsk';
 import { FatigueGuard } from './FatigueGuard';
+import { FundingRunway } from './FundingRunway';
+import { IssueResponseEngine } from './IssueResponseEngine';
 import { LtvForecast } from './LtvForecast';
+import { NetworkMultiplier } from './NetworkMultiplier';
+import { ReactivationCenter } from './ReactivationCenter';
 import { MajorDonorLadder } from './MajorDonorLadder';
 import { MomentumDetector } from './MomentumDetector';
 import { PaymentRecovery } from './PaymentRecovery';
@@ -125,6 +130,11 @@ export function FundraisingTab({ project }: { project: Project }) {
       {showForm && <DonationForm project={project} onDone={() => setShowForm(false)} />}
 
       {/* AI Fundraising Suite */}
+      <FundingRunway orgId={project.org_id} projectId={project.id} donations={donations} />
+      <EmergencyAsk orgId={project.org_id} projectId={project.id} donations={donations} />
+      <IssueResponseEngine orgId={project.org_id} projectId={project.id} donations={donations} />
+      <ReactivationCenter orgId={project.org_id} projectId={project.id} donors={donors} donations={donations} />
+      <NetworkMultiplier orgId={project.org_id} projectId={project.id} donors={donors} />
       <DonorInsights orgId={project.org_id} projectId={project.id} />
       <AskOptimizer orgId={project.org_id} projectId={project.id} donors={donors} />
       <MajorDonorLadder orgId={project.org_id} projectId={project.id} donors={donors} />

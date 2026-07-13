@@ -160,7 +160,16 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   impact/urgency/peer), and issue_response (`IssueResponseEngine.tsx` — real
   event → 2 email angles + SMS + social, grounded only in the staff-written
   description; warm segment = donors who gave in last 45 days, computed
-  client-side). None of this touches the compliance domain, which stays
+  client-side), plus emergency_ask (`EmergencyAsk.tsx` — staff state a REAL
+  gap + deadline + reason, model returns email/SMS/volunteer-call-script;
+  drafting-only, no table). **Per-user AI dashboard**: `AiDashboard.tsx`
+  (rendered atop `AiCenterTab`) shows the role's filtered tools as
+  drag-and-drop cards under category tabs; arrangement/hidden-set persists in
+  `dashboard_layouts` (0026, one row per user+org, RLS = own rows only) via
+  `useDashboardLayout.ts`; the pure order/hide math is
+  `arrangeTools`/`reorderTools` in `toolRegistry.ts` (unit-tested). Layout is
+  presentation ONLY — it can never widen what `filterTools()` allowed.
+  None of this touches the compliance domain, which stays
   deliberately AI-free (invariant #6).
   Model responses that must be JSON go through `src/lib/ai/extractJson.ts`
   (import fixer, Smart Segments, Content Pack, and every fundraising-AI
@@ -186,7 +195,7 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   `src/features/turf/route.ts` (city/ward parsing, walk-order optimization,
   turf splitting) is unit-tested in `route.test.ts`; `useTurf.ts` re-exports
   it. Follow this split for new algorithmic code.
-- **Migrations are numbered; we're at `0025`.** Recent additions to
+- **Migrations are numbered; we're at `0026`.** Recent additions to
   `voter_records`: `contact_status` / `ballot_status` / `ballot_updated_at`
   (0017), `canvass_notes` (0018). New entitlement key `ai_module` and
   permission `ai.use` are documented in invariants #3 and #4.

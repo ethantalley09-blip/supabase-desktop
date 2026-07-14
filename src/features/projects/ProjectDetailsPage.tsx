@@ -1,6 +1,8 @@
 import * as Tabs from '@radix-ui/react-tabs';
 import { ArrowLeft } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import type { ToolLocation } from '@/features/rbac/toolRegistry';
 import { ExportButton } from '@/features/export/ExportButton';
 import type { ExportDataset } from '@/features/export/types';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
@@ -21,6 +23,7 @@ const tabTriggerClass =
 export function ProjectDetailsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project, isLoading, error } = useProject(projectId);
+  const [tab, setTab] = useState('overview');
 
   // Paywalled tabs render only when the entitlement exists AND the viewer's
   // role can see that module -- a canvasser shouldn't see the fundraising
@@ -35,6 +38,15 @@ export function ProjectDetailsPage() {
   const showFundraising = Boolean(fundraisingEnt.data && canViewFundraising.data);
   const showCompliance = Boolean(complianceEnt.data && canViewCompliance.data);
   const showAi = Boolean(aiEnt.data && canUseAi.data);
+
+  // Deep link from an AI-dashboard card to its working tool: switch to the
+  // hosting tab, then scroll once that tab's content has mounted. No-op if
+  // the tab isn't available (e.g. fundraising module not purchased).
+  const openTool = (loc: ToolLocation) => {
+    if (loc.tab === 'fundraising' && !showFundraising) return;
+    setTab(loc.tab);
+    setTimeout(() => document.getElementById(loc.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
 
   if (isLoading) return <p className="p-8 text-sm text-neutral-500">Loading project…</p>;
   if (error || !project)
@@ -116,7 +128,7 @@ export function ProjectDetailsPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-6">
-        <Tabs.Root defaultValue="overview">
+        <Tabs.Root value={tab} onValueChange={setTab}>
           <Tabs.List className="mb-4 inline-flex gap-1 rounded-lg bg-neutral-100 p-1">
             <Tabs.Trigger value="overview" className={tabTriggerClass}>
               Overview
@@ -168,7 +180,7 @@ export function ProjectDetailsPage() {
           </Tabs.Content>
           {showAi && (
             <Tabs.Content value="ai">
-              <AiCenterTab project={project} />
+              <AiCenterTab project={project} onOpenTool={openTool} />
             </Tabs.Content>
           )}
           <Tabs.Content value="team">

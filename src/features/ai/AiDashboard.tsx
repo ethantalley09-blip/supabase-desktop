@@ -3,8 +3,10 @@ import { useMemo, useState } from 'react';
 import {
   arrangeTools,
   reorderTools,
+  TOOL_LOCATIONS,
   type ToolCategory,
-  type ToolDefinition
+  type ToolDefinition,
+  type ToolLocation
 } from '@/features/rbac/toolRegistry';
 import { useAvailableTools } from '@/features/rbac/useAvailableTools';
 import { useDashboardLayout, useSaveDashboardLayout } from '@/features/rbac/useDashboardLayout';
@@ -16,26 +18,25 @@ const CATEGORY_LABEL: Record<ToolCategory, string> = {
   fundraising: 'Fundraising'
 };
 
-// Where each tool's full UI lives, so a card can say so (tools hosted right
-// here on the AI Center scroll into view on click instead).
-const LOCAL_ANCHORS: Record<string, string> = {
-  ask_data: 'tool-ask_data',
-  smart_segments: 'tool-smart_segments',
-  campaign_coach: 'tool-campaign_coach',
-  message_studio: 'tool-message_studio',
-  content_pack: 'tool-content_pack'
-};
-const TAB_HINT: Record<ToolCategory, string> = {
-  general: 'AI Center',
-  turf: 'Turf Map tab',
-  comms: 'Comms tab',
-  fundraising: 'Fundraising tab'
+const TAB_HINT: Record<ToolLocation['tab'], string> = {
+  ai: 'Below on this page',
+  turf: 'Opens Turf Map tab',
+  comms: 'Opens Comms tab',
+  fundraising: 'Opens Fundraising tab'
 };
 
 // The per-role AI dashboard: only the tools this role's permissions unlock
 // (filterTools), organized under category tabs, drag-and-drop to reorder,
-// eye-toggle to hide/show. Arrangement persists per user per org.
-export function AiDashboard({ orgId }: { orgId: string }) {
+// eye-toggle to hide/show. Arrangement persists per user per org. Every card
+// is a working deep link: TOOL_LOCATIONS says which tab hosts the tool, and
+// `onOpenTool` (from ProjectDetailsPage) switches there and scrolls to it.
+export function AiDashboard({
+  orgId,
+  onOpenTool
+}: {
+  orgId: string;
+  onOpenTool?: (loc: ToolLocation) => void;
+}) {
   const { tools } = useAvailableTools(orgId);
   const { data: layout } = useDashboardLayout(orgId);
   const save = useSaveDashboardLayout();
@@ -64,8 +65,13 @@ export function AiDashboard({ orgId }: { orgId: string }) {
     persist([...visible.map((t) => t.id), id], (layout?.hidden ?? []).filter((h) => h !== id));
 
   const open = (tool: ToolDefinition) => {
-    const anchor = LOCAL_ANCHORS[tool.id];
-    if (anchor) document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const loc = TOOL_LOCATIONS[tool.id];
+    if (!loc) return;
+    if (loc.tab === 'ai') {
+      document.getElementById(loc.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      onOpenTool?.(loc);
+    }
   };
 
   if (tools.length === 0) return null;
@@ -123,8 +129,12 @@ export function AiDashboard({ orgId }: { orgId: string }) {
             }`}
           >
             <div className="flex items-start justify-between gap-1">
-              <button type="button" className="min-w-0 text-left" onClick={() => open(tool)}>
+              <button type="button" className="min-w-0 flex-1 text-left" onClick={() => open(tool)}>
                 <p className="truncate text-sm font-medium text-neutral-900">{tool.label}</p>
+                <p className="mt-0.5 line-clamp-2 text-xs text-neutral-500">{tool.description}</p>
+                <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-violet-500">
+                  {TAB_HINT[TOOL_LOCATIONS[tool.id]?.tab ?? 'ai']} →
+                </p>
               </button>
               <div className="flex shrink-0 items-center gap-1">
                 <button
@@ -138,10 +148,6 @@ export function AiDashboard({ orgId }: { orgId: string }) {
                 <GripVertical className="h-3.5 w-3.5 text-neutral-300" />
               </div>
             </div>
-            <p className="mt-0.5 line-clamp-2 text-xs text-neutral-500">{tool.description}</p>
-            <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-neutral-400">
-              {LOCAL_ANCHORS[tool.id] ? 'Below on this page' : TAB_HINT[tool.category]}
-            </p>
           </div>
         ))}
       </div>

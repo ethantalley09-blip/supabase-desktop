@@ -12,6 +12,7 @@ import {
 } from '@/features/fundraising/useFundraising';
 import { buildTurfSnapshot, dominantVoterLanguage, useTerritories, useVoterRecords } from '@/features/turf/useTurf';
 import { useAvailableTools } from '@/features/rbac/useAvailableTools';
+import type { ToolLocation } from '@/features/rbac/toolRegistry';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { useAiAssist, type AiPurpose } from '@/lib/ai/useAiAssist';
 import { AiDashboard } from './AiDashboard';
@@ -40,7 +41,13 @@ const TONES = ['Warm', 'Urgent', 'Casual', 'Formal'];
 // summarized into an aggregate snapshot; no raw rows leave the app. Rendered
 // only when the org has the ai_module entitlement AND the viewer has ai.use
 // (gated in ProjectDetailsPage).
-export function AiCenterTab({ project }: { project: Project }) {
+export function AiCenterTab({
+  project,
+  onOpenTool
+}: {
+  project: Project;
+  onOpenTool?: (loc: ToolLocation) => void;
+}) {
   const { tools } = useAvailableTools(project.org_id);
   const has = (id: string) => tools.some((t) => t.id === id);
   const { data: voters } = useVoterRecords(project.id);
@@ -115,7 +122,7 @@ export function AiCenterTab({ project }: { project: Project }) {
       </p>
 
       {/* Per-role dashboard: category tabs + drag-and-drop arrangement */}
-      <AiDashboard orgId={project.org_id} />
+      <AiDashboard orgId={project.org_id} onOpenTool={onOpenTool} />
 
       {/* Ask your data */}
       {has('ask_data') && (

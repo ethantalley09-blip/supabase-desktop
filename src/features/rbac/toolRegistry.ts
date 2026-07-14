@@ -62,6 +62,25 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'emergency_ask', label: 'Emergency Ask Generator', description: 'Real gap + real deadline -> same-day email/SMS/call-script pack.', category: 'fundraising', requires: ['fundraising.manage'] }
 ];
 
+// Where each tool's working UI lives: which project tab hosts it and the
+// DOM anchor (`tool-<id>` wrapper) to scroll to. Pure data — the dashboard
+// uses it to make every card a working deep link.
+export type ToolLocation = { tab: 'ai' | 'turf' | 'comms' | 'fundraising'; anchor: string };
+
+export const TOOL_LOCATIONS: Record<string, ToolLocation> = Object.fromEntries(
+  TOOL_REGISTRY.map((t) => {
+    const tab =
+      ['ask_data', 'campaign_coach', 'message_studio', 'content_pack', 'smart_segments'].includes(t.id)
+        ? 'ai'
+        : ['field_coach', 'note_digest', 'import_mapping'].includes(t.id)
+          ? 'turf'
+          : ['broadcast_draft', 'outreach_booster'].includes(t.id)
+            ? 'comms'
+            : 'fundraising';
+    return [t.id, { tab, anchor: `tool-${t.id}` }];
+  })
+) as Record<string, ToolLocation>;
+
 // The customized filter: given a flat permission map (as returned by the
 // get_my_permissions RPC) and whether the org has ai_module, returns exactly
 // the tools this role should see. Pure — no network, fully unit-testable.

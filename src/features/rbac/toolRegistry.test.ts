@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { arrangeTools, filterTools, isToolVisible, reorderTools, TOOL_REGISTRY, toolsByCategory } from './toolRegistry';
+import {
+  arrangeTools,
+  filterTools,
+  isToolVisible,
+  reorderTools,
+  TOOL_LOCATIONS,
+  TOOL_REGISTRY,
+  toolsByCategory
+} from './toolRegistry';
+
+describe('TOOL_LOCATIONS', () => {
+  it('every registered tool has a deep-link location with a tool- anchor', () => {
+    for (const tool of TOOL_REGISTRY) {
+      const loc = TOOL_LOCATIONS[tool.id];
+      expect(loc, `missing location for ${tool.id}`).toBeDefined();
+      expect(loc.anchor).toBe(`tool-${tool.id}`);
+      expect(['ai', 'turf', 'comms', 'fundraising']).toContain(loc.tab);
+    }
+  });
+});
 
 describe('filterTools', () => {
   it('returns nothing without ai_module, even with every permission', () => {

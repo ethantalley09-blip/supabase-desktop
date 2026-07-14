@@ -436,13 +436,19 @@ export function TurfTab({ project }: { project: Project }) {
         )}
       </div>
 
-      <TurfInsights
-        orgId={project.org_id}
-        projectId={project.id}
-        voters={voters ?? []}
-        territories={territories ?? []}
-        canUseAi={Boolean(canUseAi.data)}
-      />
+      {/* Anchors match TOOL_LOCATIONS: field coach + note digest both live in
+          TurfInsights, so both ids point at this block */}
+      <div id="tool-field_coach">
+        <div id="tool-note_digest">
+          <TurfInsights
+            orgId={project.org_id}
+            projectId={project.id}
+            voters={voters ?? []}
+            territories={territories ?? []}
+            canUseAi={Boolean(canUseAi.data)}
+          />
+        </div>
+      </div>
 
       <div className="inline-flex gap-1 rounded-lg bg-neutral-100 p-1">
         <button
@@ -461,9 +467,11 @@ export function TurfTab({ project }: { project: Project }) {
         </button>
       </div>
 
-      {importing && (
-        <ImportWizard projectId={project.id} orgId={project.org_id} onDone={() => setImporting(false)} />
-      )}
+      <div id="tool-import_mapping">
+        {importing && (
+          <ImportWizard projectId={project.id} orgId={project.org_id} onDone={() => setImporting(false)} />
+        )}
+      </div>
 
       {hasGeography && (
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-neutral-200 bg-white p-4">

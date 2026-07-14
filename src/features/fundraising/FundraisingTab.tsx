@@ -129,28 +129,29 @@ export function FundraisingTab({ project }: { project: Project }) {
 
       {showForm && <DonationForm project={project} onDone={() => setShowForm(false)} />}
 
-      {/* AI Fundraising Suite */}
-      <FundingRunway orgId={project.org_id} projectId={project.id} donations={donations} />
-      <EmergencyAsk orgId={project.org_id} projectId={project.id} donations={donations} />
-      <IssueResponseEngine orgId={project.org_id} projectId={project.id} donations={donations} />
-      <ReactivationCenter orgId={project.org_id} projectId={project.id} donors={donors} donations={donations} />
-      <NetworkMultiplier orgId={project.org_id} projectId={project.id} donors={donors} />
-      <DonorInsights orgId={project.org_id} projectId={project.id} />
-      <AskOptimizer orgId={project.org_id} projectId={project.id} donors={donors} />
-      <MajorDonorLadder orgId={project.org_id} projectId={project.id} donors={donors} />
-      <MomentumDetector orgId={project.org_id} projectId={project.id} donations={donations} />
-      <PaymentRecovery orgId={project.org_id} projectId={project.id} donors={donors} />
-      <VolunteerDonorBridge orgId={project.org_id} projectId={project.id} />
-      <RecurringUpgrade orgId={project.org_id} projectId={project.id} donors={donors} />
-      <LtvForecast orgId={project.org_id} projectId={project.id} donors={donors} />
-      <DonorDedup orgId={project.org_id} projectId={project.id} donors={donors} />
-      <RefundWatchdog orgId={project.org_id} projectId={project.id} />
-      <SprintPlanner orgId={project.org_id} projectId={project.id} currentTotalCents={total} />
-      <RetentionSequence orgId={project.org_id} projectId={project.id} donors={donors} />
-      <FatigueGuard orgId={project.org_id} projectId={project.id} />
-      <CopyVariationTester orgId={project.org_id} projectId={project.id} />
+      {/* AI Fundraising Suite — each wrapped in a `tool-<id>` anchor matching
+          TOOL_LOCATIONS so AI-dashboard cards can deep-link here */}
+      <div id="tool-funding_runway"><FundingRunway orgId={project.org_id} projectId={project.id} donations={donations} /></div>
+      <div id="tool-emergency_ask"><EmergencyAsk orgId={project.org_id} projectId={project.id} donations={donations} /></div>
+      <div id="tool-issue_response"><IssueResponseEngine orgId={project.org_id} projectId={project.id} donations={donations} /></div>
+      <div id="tool-reactivation_center"><ReactivationCenter orgId={project.org_id} projectId={project.id} donors={donors} donations={donations} /></div>
+      <div id="tool-network_multiplier"><NetworkMultiplier orgId={project.org_id} projectId={project.id} donors={donors} /></div>
+      <div id="tool-donor_insights"><DonorInsights orgId={project.org_id} projectId={project.id} /></div>
+      <div id="tool-ask_optimizer"><AskOptimizer orgId={project.org_id} projectId={project.id} donors={donors} /></div>
+      <div id="tool-major_donor_ladder"><MajorDonorLadder orgId={project.org_id} projectId={project.id} donors={donors} /></div>
+      <div id="tool-momentum_detector"><MomentumDetector orgId={project.org_id} projectId={project.id} donations={donations} /></div>
+      <div id="tool-payment_recovery"><PaymentRecovery orgId={project.org_id} projectId={project.id} donors={donors} /></div>
+      <div id="tool-volunteer_donor_bridge"><VolunteerDonorBridge orgId={project.org_id} projectId={project.id} /></div>
+      <div id="tool-recurring_upgrade"><RecurringUpgrade orgId={project.org_id} projectId={project.id} donors={donors} /></div>
+      <div id="tool-ltv_forecast"><LtvForecast orgId={project.org_id} projectId={project.id} donors={donors} /></div>
+      <div id="tool-donor_dedup"><DonorDedup orgId={project.org_id} projectId={project.id} donors={donors} /></div>
+      <div id="tool-refund_watchdog"><RefundWatchdog orgId={project.org_id} projectId={project.id} /></div>
+      <div id="tool-sprint_planner"><SprintPlanner orgId={project.org_id} projectId={project.id} currentTotalCents={total} /></div>
+      <div id="tool-retention_sequence"><RetentionSequence orgId={project.org_id} projectId={project.id} donors={donors} /></div>
+      <div id="tool-fatigue_guard"><FatigueGuard orgId={project.org_id} projectId={project.id} /></div>
+      <div id="tool-copy_variation_tester"><CopyVariationTester orgId={project.org_id} projectId={project.id} /></div>
 
-      <DonorMessageStudio project={project} />
+      <div id="tool-donor_message_studio"><DonorMessageStudio project={project} /></div>
 
       <div className="flex items-center gap-2">
         <span className="text-xs uppercase tracking-wide text-neutral-400">Period</span>

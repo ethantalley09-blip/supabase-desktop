@@ -45,9 +45,10 @@ export function CommsTab({ project }: { project: Project }) {
         )}
       </div>
 
-      {composing && (
-        <BroadcastComposer project={project} onDone={() => setComposing(false)} />
-      )}
+      {/* Anchor matches TOOL_LOCATIONS so AI-dashboard cards deep-link here */}
+      <div id="tool-broadcast_draft">
+        {composing && <BroadcastComposer project={project} onDone={() => setComposing(false)} />}
+      </div>
 
       <div className="space-y-3">
         {threads?.map((t) => (
@@ -60,7 +61,9 @@ export function CommsTab({ project }: { project: Project }) {
         )}
       </div>
 
-      <OutreachBooster project={project} />
+      <div id="tool-outreach_booster">
+        <OutreachBooster project={project} />
+      </div>
 
       {paidTier.data ? (
         <SocialSchedulerPanel project={project} />

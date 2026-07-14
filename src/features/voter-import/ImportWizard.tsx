@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, UploadCloud } from 'lucide-react';
 import { useState } from 'react';
+import type { DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
@@ -38,6 +39,7 @@ export function ImportWizard({
     lng: ''
   });
   const [parseError, setParseError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   const onFile = async (file: File) => {
     setParseError(null);
@@ -56,6 +58,29 @@ export function ImportWizard({
   };
 
   const showAiSuggest = Boolean(orgId && aiEnabled.data && canUseAi.data);
+
+  // parseVoterFile's binary branch (SheetJS) auto-detects the real format
+  // from file content, not the extension -- xlsx/xls/xlsm/xlsb/ods/tsv/txt
+  // all work already. This just widens the drop target/picker to say so.
+  const stopDefault = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const onDragOver = (e: DragEvent<HTMLLabelElement>) => {
+    stopDefault(e);
+    if (!dragActive) setDragActive(true);
+  };
+  const onDragLeave = (e: DragEvent<HTMLLabelElement>) => {
+    stopDefault(e);
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragActive(false);
+  };
+  const onDrop = (e: DragEvent<HTMLLabelElement>) => {
+    stopDefault(e);
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) onFile(file);
+  };
 
   // AI column-mapping: send the headers + a few sample rows, apply the
   // suggested mapping (only columns that actually exist), and surface any
@@ -134,15 +159,33 @@ export function ImportWizard({
 
       {!sheet && (
         <div>
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="text-sm"
-            onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-          />
+          <label
+            onDragOver={onDragOver}
+            onDragEnter={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
+              dragActive ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-300 hover:border-neutral-400'
+            }`}
+          >
+            <UploadCloud className={`h-6 w-6 ${dragActive ? 'text-neutral-900' : 'text-neutral-400'}`} />
+            <p className="text-sm font-medium text-neutral-700">
+              {dragActive ? 'Drop it here' : 'Drag a voter file here, or click to browse'}
+            </p>
+            <p className="text-xs text-neutral-400">
+              CSV, Excel (.xlsx/.xls/.xlsm), OpenDocument (.ods), or tab-delimited (.tsv/.txt) —
+              whatever your voter file export already is, no reformatting needed.
+            </p>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls,.xlsm,.xlsb,.ods,.tsv,.txt"
+              className="sr-only"
+              onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+            />
+          </label>
           <p className="mt-2 text-xs text-neutral-400">
-            CSV or Excel. Rows are parsed into structured records — include latitude/longitude
-            columns to plot voters on the map (address geocoding is a planned follow-up).
+            Rows are parsed into structured records — include latitude/longitude columns to plot
+            voters on the map immediately, or geocode addresses afterward from the Turf tab.
           </p>
           {parseError && <p className="mt-2 text-sm text-red-600">{parseError}</p>}
         </div>

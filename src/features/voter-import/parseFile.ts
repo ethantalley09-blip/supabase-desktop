@@ -10,9 +10,15 @@ export type ParsedSheet = {
 // "spreadsheet replacement": the file is read once, normalized, and stored
 // as queryable records -- never round-tripped through a grid UI.
 export async function parseVoterFile(file: File): Promise<ParsedSheet> {
-  const isCsv = file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv';
+  // Papaparse auto-detects the delimiter when unset, so it handles
+  // comma/tab-delimited exports alike -- more reliable than SheetJS's
+  // plain-text format sniffing for .tsv/.txt. Everything else (actual
+  // spreadsheet binaries: xlsx/xls/xlsm/xlsb/ods) goes through SheetJS,
+  // which detects the real format from file content, not the extension.
+  const name = file.name.toLowerCase();
+  const isDelimited = ['.csv', '.tsv', '.txt'].some((ext) => name.endsWith(ext)) || file.type === 'text/csv';
 
-  if (isCsv) {
+  if (isDelimited) {
     return new Promise((resolve, reject) => {
       Papa.parse<Record<string, unknown>>(file, {
         header: true,

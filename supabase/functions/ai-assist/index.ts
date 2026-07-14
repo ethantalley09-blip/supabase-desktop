@@ -870,14 +870,24 @@ function buildPrompt(b: Body): string {
   return lines.join('\n');
 }
 
+// Edge functions get no CORS handling from the platform — without this, every
+// browser call is blocked at the preflight before the request ever leaves
+// the client (the failure surfaces client-side as a generic "failed to send
+// a request", not as any 4xx/5xx from this function).
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
 function json(obj: unknown, status = 200): Response {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json', ...corsHeaders }
   });
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
   const authHeader = req.headers.get('Authorization');

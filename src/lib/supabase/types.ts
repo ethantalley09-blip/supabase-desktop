@@ -1368,6 +1368,67 @@ export type Database = {
           },
         ]
       }
+      opponent_records: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          occurred_on: string
+          org_id: string
+          project_id: string
+          record_type: string
+          source: string | null
+          status: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          occurred_on: string
+          org_id: string
+          project_id: string
+          record_type: string
+          source?: string | null
+          status?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          occurred_on?: string
+          org_id?: string
+          project_id?: string
+          record_type?: string
+          source?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opponent_records_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opponent_records_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opponent_records_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_memberships: {
         Row: {
           created_at: string

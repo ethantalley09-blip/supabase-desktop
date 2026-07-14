@@ -19,6 +19,8 @@ export const PERMISSION_KEYS = [
   'ai.use',
   'compliance.view',
   'compliance.manage',
+  'compete.view',
+  'compete.manage',
   'turf.view',
   'turf.manage',
   'exports.run',

@@ -15,14 +15,16 @@ const CATEGORY_LABEL: Record<ToolCategory, string> = {
   general: 'General',
   turf: 'Turf',
   comms: 'Comms',
-  fundraising: 'Fundraising'
+  fundraising: 'Fundraising',
+  compete: 'Compete'
 };
 
 const TAB_HINT: Record<ToolLocation['tab'], string> = {
   ai: 'Below on this page',
   turf: 'Opens Turf Map tab',
   comms: 'Opens Comms tab',
-  fundraising: 'Opens Fundraising tab'
+  fundraising: 'Opens Fundraising tab',
+  compete: 'Opens Compete tab'
 };
 
 // The per-role AI dashboard: only the tools this role's permissions unlock
@@ -45,7 +47,7 @@ export function AiDashboard({
 
   const { visible, hiddenTools } = useMemo(() => arrangeTools(tools, layout), [tools, layout]);
   const cats = useMemo(
-    () => (['general', 'turf', 'comms', 'fundraising'] as ToolCategory[]).filter((c) => tools.some((t) => t.category === c)),
+    () => (['general', 'turf', 'comms', 'fundraising', 'compete'] as ToolCategory[]).filter((c) => tools.some((t) => t.category === c)),
     [tools]
   );
   const shown = activeCat === 'all' ? visible : visible.filter((t) => t.category === activeCat);

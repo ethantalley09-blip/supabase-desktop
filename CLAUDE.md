@@ -171,6 +171,21 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   presentation ONLY — it can never widen what `filterTools()` allowed.
   None of this touches the compliance domain, which stays
   deliberately AI-free (invariant #6).
+  **Compete tab** (`features/compete/`, migration `0027_compete.sql`): the
+  opposition-research domain, built on one hard rule — the ONLY data source
+  is `opponent_records`, PUBLIC-record items staff type in by hand
+  (type/date/source/content; archive via status, never delete). No scraping
+  or automated monitoring, ever; the five AI purposes (contrast_message,
+  rebuttal, debate_prep, self_opposition, opponent_digest) enforce
+  issues-only criticism in their system prompts: no personal traits/family/
+  private life, never extend a quote, truth-sandwich rebuttals, red team
+  never invents scandals. New permissions `compete.view`/`compete.manage`
+  (Owner/Manager/Media, patched in 0027). Pure math + prompt-snapshot
+  builder live in `competeMath.ts` (unit-tested); `FilingGap.tsx` compares a
+  staff-entered public filing total against our real raised total with no AI
+  call. Tab gated on compete.view; AI tools inside additionally on
+  ai_module + ai.use; tools registered under the `compete` category with
+  deep-link anchors like every other tab.
   Model responses that must be JSON go through `src/lib/ai/extractJson.ts`
   (import fixer, Smart Segments, Content Pack, and every fundraising-AI
   purpose above). Deploy steps: `docs/DEPLOY_AI.md`. User guide:
@@ -195,7 +210,7 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   `src/features/turf/route.ts` (city/ward parsing, walk-order optimization,
   turf splitting) is unit-tested in `route.test.ts`; `useTurf.ts` re-exports
   it. Follow this split for new algorithmic code.
-- **Migrations are numbered; we're at `0026`.** Recent additions to
+- **Migrations are numbered; we're at `0027`.** Recent additions to
   `voter_records`: `contact_status` / `ballot_status` / `ballot_updated_at`
   (0017), `canvass_notes` (0018). New entitlement key `ai_module` and
   permission `ai.use` are documented in invariants #3 and #4.

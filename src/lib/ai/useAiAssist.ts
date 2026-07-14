@@ -33,7 +33,12 @@ export type AiPurpose =
   | 'network_ask'
   | 'reactivation_sequence'
   | 'issue_response'
-  | 'emergency_ask';
+  | 'emergency_ask'
+  | 'contrast_message'
+  | 'rebuttal'
+  | 'debate_prep'
+  | 'self_opposition'
+  | 'opponent_digest';
 
 export type AiAssistInput = {
   orgId: string;

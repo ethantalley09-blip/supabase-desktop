@@ -7,6 +7,7 @@ import { ExportButton } from '@/features/export/ExportButton';
 import type { ExportDataset } from '@/features/export/types';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
 import { CommsTab } from '@/features/comms/CommsTab';
+import { CompeteTab } from '@/features/compete/CompeteTab';
 import { ComplianceTab } from '@/features/compliance/ComplianceTab';
 import { FundraisingTab } from '@/features/fundraising/FundraisingTab';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
@@ -35,15 +36,18 @@ export function ProjectDetailsPage() {
   const canViewCompliance = useHasPermission(project?.org_id, 'compliance.view');
   const aiEnt = useEntitlement(project?.org_id, 'ai_module');
   const canUseAi = useHasPermission(project?.org_id, 'ai.use');
+  const canViewCompete = useHasPermission(project?.org_id, 'compete.view');
   const showFundraising = Boolean(fundraisingEnt.data && canViewFundraising.data);
   const showCompliance = Boolean(complianceEnt.data && canViewCompliance.data);
   const showAi = Boolean(aiEnt.data && canUseAi.data);
+  const showCompete = Boolean(canViewCompete.data);
 
   // Deep link from an AI-dashboard card to its working tool: switch to the
   // hosting tab, then scroll once that tab's content has mounted. No-op if
   // the tab isn't available (e.g. fundraising module not purchased).
   const openTool = (loc: ToolLocation) => {
     if (loc.tab === 'fundraising' && !showFundraising) return;
+    if (loc.tab === 'compete' && !showCompete) return;
     setTab(loc.tab);
     setTimeout(() => document.getElementById(loc.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
@@ -149,6 +153,11 @@ export function ProjectDetailsPage() {
             <Tabs.Trigger value="turf" className={tabTriggerClass}>
               Turf Map
             </Tabs.Trigger>
+            {showCompete && (
+              <Tabs.Trigger value="compete" className={tabTriggerClass}>
+                Compete
+              </Tabs.Trigger>
+            )}
             {showAi && (
               <Tabs.Trigger value="ai" className={tabTriggerClass}>
                 AI Center
@@ -178,6 +187,11 @@ export function ProjectDetailsPage() {
           <Tabs.Content value="turf">
             <TurfTab project={project} />
           </Tabs.Content>
+          {showCompete && (
+            <Tabs.Content value="compete">
+              <CompeteTab project={project} />
+            </Tabs.Content>
+          )}
           {showAi && (
             <Tabs.Content value="ai">
               <AiCenterTab project={project} onOpenTool={openTool} />

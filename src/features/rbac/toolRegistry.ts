@@ -10,7 +10,7 @@
 // still the real enforcement layer; this only controls what's presented).
 import type { PermissionKey } from './roleTemplates';
 
-export type ToolCategory = 'general' | 'turf' | 'comms' | 'fundraising';
+export type ToolCategory = 'general' | 'turf' | 'comms' | 'fundraising' | 'compete';
 
 export type ToolDefinition = {
   id: string;
@@ -59,13 +59,21 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'network_multiplier', label: 'Network Multiplier', description: 'Donor-voice asks to forward to their own people.', category: 'fundraising', requires: ['fundraising.manage'] },
   { id: 'reactivation_center', label: 'Reactivation Center', description: 'Rhythm-based lapse detection + 3-angle win-backs.', category: 'fundraising', requires: ['fundraising.manage'] },
   { id: 'issue_response', label: 'Issue Response Engine', description: 'News event -> instant multi-channel response pack.', category: 'fundraising', requires: ['fundraising.manage'] },
-  { id: 'emergency_ask', label: 'Emergency Ask Generator', description: 'Real gap + real deadline -> same-day email/SMS/call-script pack.', category: 'fundraising', requires: ['fundraising.manage'] }
+  { id: 'emergency_ask', label: 'Emergency Ask Generator', description: 'Real gap + real deadline -> same-day email/SMS/call-script pack.', category: 'fundraising', requires: ['fundraising.manage'] },
+
+  // Compete (opposition research on the staff-logged PUBLIC record only)
+  { id: 'filing_gap', label: 'Filing Gap', description: 'Your real total vs. their public filing number.', category: 'compete', requires: ['compete.view'] },
+  { id: 'rapid_rebuttal', label: 'Rapid Rebuttal', description: 'Their claim -> statement + social + door script.', category: 'compete', requires: ['compete.view'] },
+  { id: 'contrast_builder', label: 'Contrast Builder', description: 'Their logged position vs. ours, issues only.', category: 'compete', requires: ['compete.view'] },
+  { id: 'opponent_digest', label: 'Message Radar', description: 'Their themes, message drift, and avoided issues.', category: 'compete', requires: ['compete.view'] },
+  { id: 'debate_prep', label: 'Debate Prep', description: '5 likely attacks with honest responses + pivots.', category: 'compete', requires: ['compete.view'] },
+  { id: 'red_team', label: 'Red Team', description: 'Attack your own record before the opponent does.', category: 'compete', requires: ['compete.view'] }
 ];
 
 // Where each tool's working UI lives: which project tab hosts it and the
 // DOM anchor (`tool-<id>` wrapper) to scroll to. Pure data — the dashboard
 // uses it to make every card a working deep link.
-export type ToolLocation = { tab: 'ai' | 'turf' | 'comms' | 'fundraising'; anchor: string };
+export type ToolLocation = { tab: 'ai' | 'turf' | 'comms' | 'fundraising' | 'compete'; anchor: string };
 
 export const TOOL_LOCATIONS: Record<string, ToolLocation> = Object.fromEntries(
   TOOL_REGISTRY.map((t) => {
@@ -76,7 +84,9 @@ export const TOOL_LOCATIONS: Record<string, ToolLocation> = Object.fromEntries(
           ? 'turf'
           : ['broadcast_draft', 'outreach_booster'].includes(t.id)
             ? 'comms'
-            : 'fundraising';
+            : t.category === 'compete'
+              ? 'compete'
+              : 'fundraising';
     return [t.id, { tab, anchor: `tool-${t.id}` }];
   })
 ) as Record<string, ToolLocation>;
@@ -101,7 +111,7 @@ export function isToolVisible(
 }
 
 export function toolsByCategory(tools: ToolDefinition[]): Record<ToolCategory, ToolDefinition[]> {
-  const grouped: Record<ToolCategory, ToolDefinition[]> = { general: [], turf: [], comms: [], fundraising: [] };
+  const grouped: Record<ToolCategory, ToolDefinition[]> = { general: [], turf: [], comms: [], fundraising: [], compete: [] };
   for (const tool of tools) grouped[tool.category].push(tool);
   return grouped;
 }

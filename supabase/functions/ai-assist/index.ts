@@ -47,7 +47,12 @@ type Purpose =
   | 'network_ask'
   | 'reactivation_sequence'
   | 'issue_response'
-  | 'emergency_ask';
+  | 'emergency_ask'
+  | 'contrast_message'
+  | 'rebuttal'
+  | 'debate_prep'
+  | 'self_opposition'
+  | 'opponent_digest';
 
 type Body = {
   orgId: string;
@@ -461,6 +466,79 @@ Rules:
 - No attacks on private individuals; criticism of public figures sticks to what the description states.
 - Return JSON only.`;
 
+// ---- Competitor intelligence (Compete tab) ----
+// Shared ethic for all five: inputs are PUBLIC-record items a staff member
+// typed in by hand (with dates/sources). Criticism targets positions, votes,
+// and public statements — never personal traits, family, appearance, or
+// private life. Nothing is quoted or asserted beyond what staff entered.
+
+const CONTRAST_SYSTEM = `You write issue-contrast messaging for a political campaign: the opponent's public position (as staff logged it, with source) side by side with our candidate's position.
+
+Return ONLY a JSON object:
+{"email":{"subject":"...","body":"..."},
+ "social":"...",
+ "talking_points":["...","...","..."]}
+
+Rules:
+- Contrast POSITIONS and public records only. Never attack the opponent personally — no references to character, family, appearance, health, or private life.
+- Represent the opponent's statement exactly as provided; you may paraphrase tightly but never exaggerate, extend, or invent quotes, votes, or positions.
+- Attribute it: mention when/where it was said if the source is provided.
+- Our side of the contrast uses ONLY the position text staff provided.
+- email body 4-6 sentences; social under 280 characters; 3 talking points, one sentence each, usable by volunteers verbatim.
+- Honest and factual; no fabricated statistics or endorsements.
+- Return JSON only.`;
+
+const REBUTTAL_SYSTEM = `The opponent made a public claim (staff logged it verbatim). You draft the campaign's rapid rebuttal.
+
+Return ONLY a JSON object:
+{"statement":"...",
+ "social":"...",
+ "door_response":"..."}
+
+Rules:
+- Lead with the truth as provided by staff, address the claim, return to the truth — do not repeat or amplify the claim more than once.
+- Use ONLY the facts staff provided for the correction; if staff provided no correcting facts, rebut by contrasting values/record they provided instead of inventing a fact-check.
+- No personal attacks; the claim is wrong, not the person evil.
+- statement: 3-5 sentences, quotable, from the campaign. social: under 280 chars. door_response: 2-3 conversational sentences a canvasser says when a voter raises the claim at the door.
+- Never fabricate quotes, numbers, or events. Return JSON only.`;
+
+const DEBATE_PREP_SYSTEM = `You are a debate-prep coach. From the opponent's logged public record and our candidate's stated positions, predict the most likely attacks and prep honest responses.
+
+Return ONLY a JSON object:
+{"attacks":[{"attack":"...","response":"...","pivot":"..."} x5]}
+
+Rules:
+- Each predicted attack must be grounded in something in the logged record or an obvious general-election theme — say which.
+- response: honest, non-defensive, 2-3 spoken sentences. Never coach the candidate to lie, dodge a factual record, or misstate the opponent's position.
+- pivot: one sentence turning to a position staff provided for our candidate. If none fits, pivot to values, not invented policy.
+- Direct, realistic, no filler. Return JSON only.`;
+
+const RED_TEAM_SYSTEM = `You are the OPPOSITION's strategist for one exercise: staff describe their own candidate's record, and you attack it the way a capable opponent would — so the campaign can prepare, not so anyone gets deceived.
+
+Return ONLY a JSON object:
+{"vulnerabilities":[{"attack_angle":"...","likelihood":"high|medium|low","prep_response":"..."} x4]}
+
+Rules:
+- Attack angles come ONLY from the record as described; do not invent scandals or facts. Frame them as an opponent would frame them (sharp but not defamatory).
+- likelihood: how likely a real opponent uses it, given typical campaign dynamics.
+- prep_response: an honest, non-evasive way to answer it — acknowledge what's true, contextualize, never spin into falsehood.
+- Candid beats comfortable: if the record as described has a real weakness, say so plainly.
+- Return JSON only.`;
+
+const OPPONENT_DIGEST_SYSTEM = `You analyze the opponent's logged public record (dated statements, votes, ads, filings as staff entered them) and summarize their messaging strategy over time.
+
+Return ONLY a JSON object:
+{"themes":[{"theme":"...","evidence_count":0,"summary":"..."}],
+ "shift":"...",
+ "gaps":"..."}
+
+Rules:
+- Themes come only from the provided records; evidence_count = how many logged records support each theme. If evidence is thin (1-2 records), say the read is tentative.
+- shift: one or two sentences on how their message has moved over the logged period (or "no clear shift" if the data doesn't show one).
+- gaps: issues visibly ABSENT from their logged record — framed as "they have not publicly addressed X in what you've logged", never as a claim about their actual views.
+- Analysis only — no attack copy here, no speculation beyond the records.
+- Return JSON only.`;
+
 const EMERGENCY_ASK_SYSTEM = `The campaign has a REAL, stated funding gap with a REAL deadline (both provided). You draft the emergency ask pack staff will send to their warmest donors today.
 
 Return ONLY a JSON object:
@@ -477,6 +555,11 @@ Rules:
 - Return JSON only.`;
 
 function systemFor(purpose: Purpose): string {
+  if (purpose === 'contrast_message') return CONTRAST_SYSTEM;
+  if (purpose === 'rebuttal') return REBUTTAL_SYSTEM;
+  if (purpose === 'debate_prep') return DEBATE_PREP_SYSTEM;
+  if (purpose === 'self_opposition') return RED_TEAM_SYSTEM;
+  if (purpose === 'opponent_digest') return OPPONENT_DIGEST_SYSTEM;
   if (purpose === 'emergency_ask') return EMERGENCY_ASK_SYSTEM;
   if (purpose === 'funding_runway') return FUNDING_RUNWAY_SYSTEM;
   if (purpose === 'network_ask') return NETWORK_ASK_SYSTEM;
@@ -633,6 +716,26 @@ function buildPrompt(b: Body): string {
 
   if (b.purpose === 'emergency_ask') {
     return `Funding gap, deadline, and reason (JSON):\n${b.context}\n\nDraft the emergency ask pack (email + SMS + call script).`;
+  }
+
+  if (b.purpose === 'contrast_message') {
+    return `Opponent's logged public statement and our position (JSON):\n${b.context}\n\nDraft the issue-contrast pack.`;
+  }
+
+  if (b.purpose === 'rebuttal') {
+    return `Opponent's public claim and our correcting facts (JSON):\n${b.context}\n\nDraft the rapid rebuttal pack.`;
+  }
+
+  if (b.purpose === 'debate_prep') {
+    return `Opponent's logged public record and our candidate's positions (JSON):\n${b.context}\n\nPredict the 5 most likely attacks and prep responses.`;
+  }
+
+  if (b.purpose === 'self_opposition') {
+    return `Our own candidate's record, as staff describe it (JSON):\n${b.context}\n\nRed-team it: 4 vulnerabilities with prep responses.`;
+  }
+
+  if (b.purpose === 'opponent_digest') {
+    return `Opponent's logged public record (JSON):\n${b.context}\n\nDigest their messaging themes, shift, and gaps.`;
   }
 
   const lines: string[] = [];

@@ -16,6 +16,7 @@ export type Territory = {
 
 export type ContactStatus = 'active' | 'moved' | 'bad_address' | 'deceased' | 'do_not_contact';
 export type BallotStatus = 'none' | 'requested' | 'returned';
+export type GeocodeStatus = 'unattempted' | 'matched' | 'ambiguous' | 'no_match' | 'error';
 
 // Statuses that mean "don't send a canvasser here" — excluded from routes and
 // walk lists so volunteers never knock dead doors.
@@ -37,6 +38,8 @@ export type VoterRecord = {
   ballot_status: BallotStatus;
   ballot_updated_at: string | null;
   canvass_notes: string | null;
+  geocode_status: GeocodeStatus;
+  geocode_checked_at: string | null;
 };
 
 // City/ward extraction and walk-order optimization live in ./route (no
@@ -80,7 +83,7 @@ export function useVoterRecords(projectId: string | undefined) {
       const { data, error } = await supabase
         .from('voter_records')
         .select(
-          'id, project_id, data, full_name, address_line, lat, lng, territory_id, contact_status, ballot_status, ballot_updated_at, canvass_notes'
+          'id, project_id, data, full_name, address_line, lat, lng, territory_id, contact_status, ballot_status, ballot_updated_at, canvass_notes, geocode_status, geocode_checked_at'
         )
         .eq('project_id', projectId!)
         .limit(5000);

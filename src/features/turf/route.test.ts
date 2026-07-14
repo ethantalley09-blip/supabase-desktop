@@ -26,6 +26,8 @@ function voter(
     ballot_status: 'none',
     ballot_updated_at: null,
     canvass_notes: null,
+    geocode_status: 'unattempted',
+    geocode_checked_at: null,
     ...partial
   };
 }

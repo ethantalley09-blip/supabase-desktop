@@ -75,7 +75,25 @@ operational contract: follow it exactly.
 - Vite 8 uses rolldown/oxc — `build.minify: 'esbuild'` breaks the build.
 - The US Census geocoder has no CORS headers: `src/features/turf/geocode.ts`
   is transport-aware (Tauri native HTTP in-app, `/census-geocode` Vite proxy
-  in dev). Vite proxy changes need a dev-server restart.
+  in dev). Vite proxy changes need a dev-server restart. Geocoding tracks a
+  `geocode_status` per voter (`unattempted`/`matched`/`ambiguous`/`no_match`/
+  `error`, migration `0028`) instead of just lat/lng-or-not — an ambiguous
+  Census match (multiple candidate addresses, e.g. an apartment complex)
+  still gets a best-guess pin but stays in the manual-fix queue
+  (`GeocodeAdvanced.tsx`, pure math in `geocodeHealth.ts`) until staff
+  confirms or corrects it. "Geocode all remaining" loops in batches of 25
+  instead of the old one-click-per-25 button.
+- Supabase cannot serve this app (or any executable web page) to a browser —
+  confirmed two independent ways: Storage force-injects
+  `Content-Security-Policy: default-src 'none'; sandbox` on every object it
+  serves, and edge functions get the same treatment specifically for
+  responses that look like an HTML page requested via top-level navigation
+  (content-type silently coerced to `text/plain`). Both are deliberate
+  anti-abuse measures, not bugs — don't retry hosting the web build there.
+  The live web build is deployed on Vercel instead
+  (`vercel.json` + `api/census-geocode/[...path].ts`, which exists because a
+  static host has neither the Tauri native client nor the Vite dev proxy for
+  the Census geocoder).
 - `entitlements` uniqueness uses two partial unique indexes (org-scoped vs
   project-scoped rows). PostgREST upserts can't target them — check-then-
   insert instead (see seed script / grant-entitlement function).
@@ -256,10 +274,11 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   `src/features/turf/route.ts` (city/ward parsing, walk-order optimization,
   turf splitting) is unit-tested in `route.test.ts`; `useTurf.ts` re-exports
   it. Follow this split for new algorithmic code.
-- **Migrations are numbered; we're at `0027`.** Recent additions to
+- **Migrations are numbered; we're at `0028`.** Recent additions to
   `voter_records`: `contact_status` / `ballot_status` / `ballot_updated_at`
-  (0017), `canvass_notes` (0018). New entitlement key `ai_module` and
-  permission `ai.use` are documented in invariants #3 and #4.
+  (0017), `canvass_notes` (0018), `geocode_status` / `geocode_checked_at`
+  (0028). New entitlement key `ai_module` and permission `ai.use` are
+  documented in invariants #3 and #4.
 - **Always finish with** `npm run typecheck && npm run test && npm run build`;
   after a migration also `npm run db:reset` then regen types (workflow above).
   Verify DB-level claims with the `psql` one-liner rather than assuming.

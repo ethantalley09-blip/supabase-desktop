@@ -8,9 +8,9 @@ import { ImportWizard } from '@/features/voter-import/ImportWizard';
 import type { Project } from '@/features/projects/useProjects';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
 import { supabase } from '@/lib/supabase/client';
-import { useGeocodeUnmapped } from './geocode';
 import { BallotChase } from './BallotChase';
 import { DoorstepDonations } from './DoorstepDonations';
+import { GeocodeAdvanced } from './GeocodeAdvanced';
 import { TurfInsights } from './TurfInsights';
 import {
   isKnockable,
@@ -41,7 +41,6 @@ export function TurfTab({ project }: { project: Project }) {
   const createTerritory = useCreateTerritory();
   const createFromSelection = useCreateTerritoryFromVoters();
   const assignTerritory = useAssignTerritory();
-  const geocode = useGeocodeUnmapped();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -400,7 +399,6 @@ export function TurfTab({ project }: { project: Project }) {
   };
 
   const mappedCount = (voters ?? []).filter((v) => v.lat !== null && v.lng !== null).length;
-  const geocodableCount = (voters ?? []).filter((v) => v.lat === null && v.address_line).length;
 
   return (
     <div className="space-y-4">
@@ -411,16 +409,6 @@ export function TurfTab({ project }: { project: Project }) {
         </p>
         {canManage.data && (
           <div className="flex gap-2">
-            {geocodableCount > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={geocode.isPending}
-                onClick={() => geocode.mutate({ projectId: project.id, voters: voters ?? [] })}
-              >
-                {geocode.isPending ? 'Geocoding…' : `Geocode ${Math.min(geocodableCount, 25)} addresses`}
-              </Button>
-            )}
             <Button variant="outline" size="sm" onClick={() => setImporting(!importing)}>
               {importing ? 'Close import' : 'Import voters'}
             </Button>
@@ -606,12 +594,7 @@ export function TurfTab({ project }: { project: Project }) {
       )}
 
       {lastAssignment && <p className="text-sm text-emerald-600">{lastAssignment}</p>}
-      {geocode.data && (
-        <p className="text-sm text-emerald-600">
-          Geocoded {geocode.data.resolved} of {geocode.data.attempted} addresses via the US Census
-          geocoder{geocode.data.failed > 0 ? ` (${geocode.data.failed} unmatched)` : ''}.
-        </p>
-      )}
+      {canManage.data && <GeocodeAdvanced projectId={project.id} voters={voters ?? []} />}
       {createTerritory.isError && (
         <p className="text-sm text-red-600">{(createTerritory.error as Error).message}</p>
       )}

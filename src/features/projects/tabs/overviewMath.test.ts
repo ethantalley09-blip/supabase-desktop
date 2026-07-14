@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dailySeries, pct, sparklinePoints } from './overviewMath';
+import { computeLanguageCoverage, computeMomentum, dailySeries, pct, sparklinePoints } from './overviewMath';
 
 const TODAY = new Date('2026-07-13T00:00:00');
 
@@ -42,5 +42,57 @@ describe('pct', () => {
   it('rounds and survives divide-by-zero', () => {
     expect(pct(1, 3)).toBe(33);
     expect(pct(5, 0)).toBe(0);
+  });
+});
+
+describe('computeMomentum', () => {
+  const dayAgo = (n: number) => {
+    const d = new Date(TODAY);
+    d.setDate(d.getDate() - n);
+    return d.toISOString();
+  };
+
+  it('reads up when the last 15 days outraised the 15 before', () => {
+    const m = computeMomentum(
+      [
+        { amount_cents: 10_000, donated_at: dayAgo(3) }, // last 15
+        { amount_cents: 2_000, donated_at: dayAgo(20) } // prior 15
+      ],
+      TODAY
+    );
+    expect(m.direction).toBe('up');
+    expect(m.last15Cents).toBe(10_000);
+    expect(m.prev15Cents).toBe(2_000);
+    expect(m.changePct).toBe(400);
+  });
+
+  it('reads flat with truly no giving in either window', () => {
+    expect(computeMomentum([], TODAY)).toEqual({ direction: 'flat', changePct: 0, last15Cents: 0, prev15Cents: 0 });
+  });
+
+  it('reads up (not divide-by-zero) when the prior window was empty but recent giving exists', () => {
+    const m = computeMomentum([{ amount_cents: 500, donated_at: dayAgo(1) }], TODAY);
+    expect(m.direction).toBe('up');
+    expect(m.prev15Cents).toBe(0);
+  });
+});
+
+describe('computeLanguageCoverage', () => {
+  it('excludes English and reports contacted rate per language, largest group first', () => {
+    const rows = computeLanguageCoverage([
+      { canvass_notes: 'note', data: { language: 'Spanish' } },
+      { canvass_notes: null, data: { language: 'Spanish' } },
+      { canvass_notes: null, data: { language: 'Spanish' } },
+      { canvass_notes: 'note', data: { language: 'Vietnamese' } },
+      { canvass_notes: null, data: { language: 'English' } }
+    ]);
+    expect(rows).toEqual([
+      { language: 'Spanish', total: 3, contacted: 1, pct: 33 },
+      { language: 'Vietnamese', total: 1, contacted: 1, pct: 100 }
+    ]);
+  });
+
+  it('handles voters with no language on file', () => {
+    expect(computeLanguageCoverage([{ canvass_notes: null, data: null }])).toEqual([]);
   });
 });

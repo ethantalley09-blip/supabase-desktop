@@ -10,8 +10,15 @@ import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { useAiAssist } from '@/lib/ai/useAiAssist';
 import { OutreachBooster } from '@/features/outreach/OutreachBooster';
 import { TranslateBar } from '@/features/ai/TranslateBar';
+import { useDonations } from '@/features/fundraising/useFundraising';
 import { useAuth } from '@/providers/AuthProvider';
+import { DirectMailDesigner } from './DirectMailDesigner';
+import { EmailCampaignStudio } from './EmailCampaignStudio';
+import { MediaPitchBuilder } from './MediaPitchBuilder';
 import { SocialSchedulerPanel } from './paid/SocialSchedulerPanel';
+import { PhoneScriptBuilder } from './PhoneScriptBuilder';
+import { PressReleaseGenerator } from './PressReleaseGenerator';
+import { SendTimeInsight } from './SendTimeInsight';
 import {
   useAcknowledge,
   useCreateBroadcast,
@@ -29,6 +36,7 @@ export function CommsTab({ project }: { project: Project }) {
   const canUseAi = useHasPermission(project.org_id, 'ai.use');
   const showAi = Boolean(aiEnabled.data && canUseAi.data);
   const { data: threads } = useProjectThreads(project.org_id, project.id);
+  const { data: donations } = useDonations(project.id);
   const [composing, setComposing] = useState(false);
 
   return (
@@ -66,11 +74,35 @@ export function CommsTab({ project }: { project: Project }) {
       </div>
 
       {paidTier.data ? (
-        <SocialSchedulerPanel project={project} />
+        <div className="space-y-4">
+          <SocialSchedulerPanel project={project} />
+
+          {/* Send-time insight is pure math — always instant, no AI wait */}
+          <div id="tool-send_time_insight">
+            <SendTimeInsight donations={donations} />
+          </div>
+
+          {showAi ? (
+            <>
+              <div id="tool-email_campaign"><EmailCampaignStudio orgId={project.org_id} projectId={project.id} /></div>
+              <div id="tool-press_release"><PressReleaseGenerator orgId={project.org_id} projectId={project.id} /></div>
+              <div id="tool-media_pitch"><MediaPitchBuilder orgId={project.org_id} projectId={project.id} /></div>
+              <div id="tool-direct_mail"><DirectMailDesigner orgId={project.org_id} projectId={project.id} /></div>
+              <div id="tool-phone_script"><PhoneScriptBuilder orgId={project.org_id} projectId={project.id} /></div>
+            </>
+          ) : (
+            <p className="rounded-md border border-dashed border-neutral-300 p-4 text-sm text-neutral-400">
+              Email, press release, media pitch, direct mail, and phone/text script drafting unlock
+              with the AI module.
+            </p>
+          )}
+        </div>
       ) : (
         <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-4 text-sm text-neutral-500">
           <span className="font-medium text-neutral-700">Comms paid tier</span> — social media
-          scheduling and impression tracking. Contact your administrator to upgrade.
+          scheduling and impression tracking, send-time insight, and the full outreach suite (email
+          campaigns, press releases, media pitches, direct mail, phone/text scripts). Contact your
+          administrator to upgrade.
         </div>
       )}
     </div>

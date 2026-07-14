@@ -53,7 +53,12 @@ type Purpose =
   | 'debate_prep'
   | 'self_opposition'
   | 'opponent_digest'
-  | 'doorstep_pitch';
+  | 'doorstep_pitch'
+  | 'email_campaign'
+  | 'press_release'
+  | 'media_pitch'
+  | 'direct_mail'
+  | 'phone_script';
 
 type Body = {
   orgId: string;
@@ -568,7 +573,77 @@ Rules:
 - Honest only: no fabricated matching funds, deadlines, or claims. If a real deadline is provided, you may use it.
 - Return JSON only.`;
 
+// ---- Outreach & Marketing suite (Comms tab, paid tier) ----
+// Channels beyond social: email campaigns, press releases, reporter pitches,
+// direct mail, and phone/text scripts. Same house rules as everywhere else:
+// honest and factual only, no fabricated urgency/deadlines/matching funds,
+// grounded strictly in what staff provided.
+
+const EMAIL_CAMPAIGN_SYSTEM = `You are an email marketing strategist for a political/advocacy campaign. Draft one email campaign with 3 subject line variants for A/B testing.
+
+Return ONLY a JSON object:
+{"subject_a":"...","subject_b":"...","subject_c":"...","preview_text":"...","body":"..."}
+
+Rules:
+- The 3 subject lines must take genuinely different angles (e.g. curiosity, direct ask, urgency-if-real) — not minor rewordings of each other.
+- Subject lines must accurately reflect the body — no clickbait, no ALL CAPS, no spam-trigger phrasing ("FREE", excessive punctuation).
+- preview_text: the inbox preview snippet, under 90 characters, complements (doesn't repeat) the subject.
+- body: 4-7 short paragraphs, one clear call to action. Honest and specific — no fabricated deadlines or matching funds unless the context states a real one.
+- Return JSON only.`;
+
+const PRESS_RELEASE_SYSTEM = `You write an AP-style press release for a political/advocacy campaign, grounded ONLY in the facts, quote, and event details staff provide.
+
+Return ONLY a JSON object:
+{"headline":"...","dateline":"...","body":"...","boilerplate":"...","media_contact_line":"..."}
+
+Rules:
+- headline: under 15 words, factual, no editorializing adjectives.
+- dateline: "CITY, STATE — Month Day, Year" format using the location/date provided (or a placeholder like "[CITY, STATE]" if not given).
+- body: standard press release structure (lede paragraph answering who/what/when/where/why, supporting paragraphs, a quote block using ONLY a quote staff provided — never invent a quote attributed to the candidate).
+- boilerplate: a short "About [Campaign]" paragraph using only the campaign facts provided.
+- media_contact_line: "Media Contact: [Name], [email/phone]" — use placeholders if not provided.
+- Never invent statistics, endorsements, or events beyond what staff stated. Return JSON only.`;
+
+const MEDIA_PITCH_SYSTEM = `You write a short, personalized pitch email to a specific journalist/outlet, given the reporter's name, outlet, beat, and the story angle staff provide.
+
+Return ONLY a JSON object: {"subject":"...","body":"..."}
+
+Rules:
+- subject: under 60 characters, specific to the story (never generic like "Story idea").
+- body: under 150 words. Open with why THIS reporter/beat is the right fit (using only what's provided — never claim a relationship or past coverage that wasn't stated). State the news angle plainly, offer availability for an interview/comment, one clear next step.
+- No fabricated exclusivity claims, no fake urgency, no flattery not grounded in the provided beat.
+- Return JSON only.`;
+
+const DIRECT_MAIL_SYSTEM = `You write copy for a physical direct-mail piece (postcard or mailer) for a political/advocacy campaign — space is tight, it competes with a stack of junk mail for 2 seconds of attention.
+
+Return ONLY a JSON object: {"headline":"...","body":"...","cta":"..."}
+
+Rules:
+- headline: under 8 words, punchy, readable from across a room.
+- body: under 50 words. One idea, not three. Plain language.
+- cta: under 6 words, a single clear action (e.g. "Visit VoteName.com").
+- Honest only — no fabricated deadlines, matching funds, or claims beyond what staff provided.
+- Return JSON only.`;
+
+const PHONE_SCRIPT_SYSTEM = `You write a phone bank or peer-to-peer texting script for volunteers — distinct from a door-to-door canvassing script because the caller/texter can't read body language and has seconds to sound human, not robotic.
+
+Return ONLY a JSON object:
+{"greeting":"...","message":"...","ask":"...","if_voicemail":"..."}
+
+Rules:
+- greeting: a natural opener that identifies the caller and campaign, invites the person to keep talking (not a monologue).
+- message: 2-3 sentences, conversational, states the reason for the call/text plainly.
+- ask: one clear, specific ask (vote, volunteer, donate — whichever staff specified) stated as a question, not a demand.
+- if_voicemail: a short voicemail-safe version, under 20 seconds spoken, includes a callback or link if provided.
+- No pressure tactics; if staff note the person should be able to opt out, include a natural way to honor that.
+- Return JSON only.`;
+
 function systemFor(purpose: Purpose): string {
+  if (purpose === 'email_campaign') return EMAIL_CAMPAIGN_SYSTEM;
+  if (purpose === 'press_release') return PRESS_RELEASE_SYSTEM;
+  if (purpose === 'media_pitch') return MEDIA_PITCH_SYSTEM;
+  if (purpose === 'direct_mail') return DIRECT_MAIL_SYSTEM;
+  if (purpose === 'phone_script') return PHONE_SCRIPT_SYSTEM;
   if (purpose === 'doorstep_pitch') return DOORSTEP_PITCH_SYSTEM;
   if (purpose === 'contrast_message') return CONTRAST_SYSTEM;
   if (purpose === 'rebuttal') return REBUTTAL_SYSTEM;
@@ -755,6 +830,26 @@ function buildPrompt(b: Body): string {
 
   if (b.purpose === 'doorstep_pitch') {
     return `Warm door context (JSON):\n${b.context}\n\nWrite the 20-second doorstep ask.`;
+  }
+
+  if (b.purpose === 'email_campaign') {
+    return `Campaign brief (JSON):\n${b.context}\n\nDraft the email campaign with 3 subject line variants.`;
+  }
+
+  if (b.purpose === 'press_release') {
+    return `Announcement facts (JSON):\n${b.context}\n\nDraft the AP-style press release.`;
+  }
+
+  if (b.purpose === 'media_pitch') {
+    return `Reporter and story angle (JSON):\n${b.context}\n\nDraft the personalized media pitch.`;
+  }
+
+  if (b.purpose === 'direct_mail') {
+    return `Mail piece brief (JSON):\n${b.context}\n\nDraft the direct mail copy.`;
+  }
+
+  if (b.purpose === 'phone_script') {
+    return `Call/text campaign brief (JSON):\n${b.context}\n\nDraft the phone bank / P2P texting script.`;
   }
 
   const lines: string[] = [];

@@ -39,7 +39,12 @@ export type AiPurpose =
   | 'debate_prep'
   | 'self_opposition'
   | 'opponent_digest'
-  | 'doorstep_pitch';
+  | 'doorstep_pitch'
+  | 'email_campaign'
+  | 'press_release'
+  | 'media_pitch'
+  | 'direct_mail'
+  | 'phone_script';
 
 export type AiAssistInput = {
   orgId: string;

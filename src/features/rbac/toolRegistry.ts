@@ -39,6 +39,12 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   // Comms
   { id: 'broadcast_draft', label: 'Draft Broadcast', description: 'AI-drafted team broadcasts and replies.', category: 'comms', requires: ['comms.broadcast'] },
   { id: 'outreach_booster', label: 'Outreach Booster', description: 'Saved-contact texts for supporters.', category: 'comms', requires: ['comms.view'] },
+  { id: 'send_time_insight', label: 'Send-Time Insight', description: 'Best time to reach supporters, from real gift timestamps.', category: 'comms', requires: ['comms.view'] },
+  { id: 'email_campaign', label: 'Email Campaign Studio', description: '3 A/B subject lines + preview text + body.', category: 'comms', requires: ['comms.manage'] },
+  { id: 'press_release', label: 'Press Release Generator', description: 'AP-style release from facts you provide.', category: 'comms', requires: ['comms.manage'] },
+  { id: 'media_pitch', label: 'Media Pitch Builder', description: 'Personalized pitch to a named reporter.', category: 'comms', requires: ['comms.manage'] },
+  { id: 'direct_mail', label: 'Direct Mail Designer', description: 'Postcard-sized headline + body + CTA.', category: 'comms', requires: ['comms.manage'] },
+  { id: 'phone_script', label: 'Phone / Text Script Builder', description: 'Phone bank and P2P texting scripts.', category: 'comms', requires: ['comms.manage'] },
 
   // Fundraising AI suite
   { id: 'donor_insights', label: 'Donor Insights', description: 'Connector scoring and at-risk donors.', category: 'fundraising', requires: ['fundraising.view'] },
@@ -78,16 +84,18 @@ export type ToolLocation = { tab: 'ai' | 'turf' | 'comms' | 'fundraising' | 'com
 
 export const TOOL_LOCATIONS: Record<string, ToolLocation> = Object.fromEntries(
   TOOL_REGISTRY.map((t) => {
-    const tab =
+    // A handful of tools render on the AI Center or Turf page even though
+    // their registry category says otherwise (they're general-purpose or
+    // reused elsewhere) — list those exceptions explicitly. Everything else
+    // defaults to its own category, which is also a valid tab name
+    // ('turf'/'comms'/'fundraising'/'compete' match 1:1) — so a newly added
+    // comms/fundraising/compete tool routes correctly with zero extra wiring.
+    const tab: ToolLocation['tab'] =
       ['ask_data', 'campaign_coach', 'message_studio', 'content_pack', 'smart_segments'].includes(t.id)
         ? 'ai'
         : ['field_coach', 'note_digest', 'import_mapping', 'doorstep_donations'].includes(t.id)
           ? 'turf'
-          : ['broadcast_draft', 'outreach_booster'].includes(t.id)
-            ? 'comms'
-            : t.category === 'compete'
-              ? 'compete'
-              : 'fundraising';
+          : (t.category as ToolLocation['tab']);
     return [t.id, { tab, anchor: `tool-${t.id}` }];
   })
 ) as Record<string, ToolLocation>;

@@ -194,11 +194,40 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   only), and a canvasser leaderboard attributing real gifts via
   `donations.recorded_by` (the useDonations select embeds
   `recorder:recorded_by(full_name,email)`). Registered under turf with just
-  `turf.view` so canvassers get it. **Overview command center**
+  `turf.view` so canvassers get it.
+  **Outreach & Marketing suite** (`features/comms/`, comms tab, gated
+  behind the `comms_paid_tier` entitlement alongside the social scheduler):
+  5 drafting-only AI purposes beyond social — email_campaign
+  (`EmailCampaignStudio.tsx`, 3 A/B subject variants + preview text + body),
+  press_release (`PressReleaseGenerator.tsx`, AP structure, never invents a
+  quote), media_pitch (`MediaPitchBuilder.tsx`, a named reporter/beat, under
+  150 words), direct_mail (`DirectMailDesigner.tsx`, postcard-sized: headline
+  + <50-word body + one CTA), and phone_script (`PhoneScriptBuilder.tsx`,
+  phone bank / P2P texting, includes a voicemail-safe branch — distinct from
+  `canvassing_script`, which is door-to-door). None persist a table — same
+  drafting-only pattern as `emergency_ask`. Plus **Send-Time Insight**
+  (`SendTimeInsight.tsx`, pure math in `comms/sendTime.ts` + tests): the best
+  hour/day to reach supporters computed from the campaign's OWN donation
+  timestamps — no AI call, renders instantly, needs no entitlement beyond
+  paid tier. New tools registered under the `comms` category; `TOOL_LOCATIONS`
+  now defaults an unlisted tool's tab to its own `category` (comms/
+  fundraising/compete map 1:1) instead of a hardcoded id whitelist, so a
+  newly added comms/fundraising/compete tool routes correctly with zero
+  extra wiring — only turf/ai-hosted exceptions need listing explicitly.
+  **Overview command center**
   (`projects/tabs/OverviewTab.tsx`, pure viz math in `overviewMath.ts` +
-  tests): stat cards, 30-day SVG donation sparkline, progress bars, and a
-  "Where to push next" list whose rows deep-link via `onOpenTool` — all
-  client-side math on already-cached queries, zero AI calls. **Performance:**
+  tests): stat cards, 30-day SVG donation sparkline, progress bars, a
+  "Where to push next" list, and 6 cross-domain `MiniCard`s that only exist
+  because Lynx has turf/fundraising/comms/compete in one place — Momentum
+  (15-day giving trend, distinct from the fundraising tab's hour-level
+  Momentum Detector), Funding Runway snapshot (reads the latest saved
+  `funding_runway_plans` row), Opposition Pulse (count + most recent
+  `opponent_records` entry), Best Time to Reach Supporters (reuses
+  `sendTime.ts`), Top Doorstep Fundraisers (reuses `canvasserLeaderboard`
+  from `doorstep.ts`), and Language Equity (`computeLanguageCoverage`: per
+  non-English language, contacted-rate from `canvass_notes`). Every card
+  with data deep-links via `onOpenTool`. All client-side math on
+  already-cached queries, zero AI calls. **Performance:**
   query defaults are staleTime 60s / gcTime 10min / no refetch-on-focus
   (QueryProvider), and every project tab except Overview is code-split via
   React.lazy in `ProjectDetailsPage` (entry chunk halved; the Leaflet map

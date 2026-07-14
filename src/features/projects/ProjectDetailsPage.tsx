@@ -1,22 +1,31 @@
 import * as Tabs from '@radix-ui/react-tabs';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { ToolLocation } from '@/features/rbac/toolRegistry';
 import { ExportButton } from '@/features/export/ExportButton';
 import type { ExportDataset } from '@/features/export/types';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
-import { CommsTab } from '@/features/comms/CommsTab';
-import { CompeteTab } from '@/features/compete/CompeteTab';
-import { ComplianceTab } from '@/features/compliance/ComplianceTab';
-import { FundraisingTab } from '@/features/fundraising/FundraisingTab';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { supabase } from '@/lib/supabase/client';
-import { AiCenterTab } from '@/features/ai/AiCenterTab';
-import { TurfTab } from '@/features/turf/TurfTab';
 import { OverviewTab } from './tabs/OverviewTab';
-import { TeamTab } from './tabs/TeamTab';
 import { useProject } from './useProjects';
+
+// Every tab except Overview is code-split: the app paints with a small entry
+// bundle and each tab's code (the Leaflet map, the AI suites, xlsx) downloads
+// the first time it's opened — then it's cached. Overview stays eager so the
+// landing view renders with zero extra round-trips.
+const CommsTab = lazy(() => import('@/features/comms/CommsTab').then((m) => ({ default: m.CommsTab })));
+const CompeteTab = lazy(() => import('@/features/compete/CompeteTab').then((m) => ({ default: m.CompeteTab })));
+const ComplianceTab = lazy(() => import('@/features/compliance/ComplianceTab').then((m) => ({ default: m.ComplianceTab })));
+const FundraisingTab = lazy(() => import('@/features/fundraising/FundraisingTab').then((m) => ({ default: m.FundraisingTab })));
+const AiCenterTab = lazy(() => import('@/features/ai/AiCenterTab').then((m) => ({ default: m.AiCenterTab })));
+const TurfTab = lazy(() => import('@/features/turf/TurfTab').then((m) => ({ default: m.TurfTab })));
+const TeamTab = lazy(() => import('./tabs/TeamTab').then((m) => ({ default: m.TeamTab })));
+
+function TabLoading() {
+  return <p className="p-6 text-sm text-neutral-400">Loading…</p>;
+}
 
 const tabTriggerClass =
   'rounded-md px-3 py-1.5 text-sm text-neutral-500 hover:text-neutral-900 data-[state=active]:bg-white data-[state=active]:text-neutral-900 data-[state=active]:shadow-sm';
@@ -169,8 +178,9 @@ export function ProjectDetailsPage() {
           </Tabs.List>
 
           <Tabs.Content value="overview">
-            <OverviewTab project={project} />
+            <OverviewTab project={project} onOpenTool={openTool} />
           </Tabs.Content>
+          <Suspense fallback={<TabLoading />}>
           {showFundraising && (
             <Tabs.Content value="fundraising">
               <FundraisingTab project={project} />
@@ -200,6 +210,7 @@ export function ProjectDetailsPage() {
           <Tabs.Content value="team">
             <TeamTab orgId={project.org_id} />
           </Tabs.Content>
+          </Suspense>
         </Tabs.Root>
       </main>
     </div>

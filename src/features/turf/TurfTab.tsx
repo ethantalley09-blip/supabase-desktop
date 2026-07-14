@@ -10,6 +10,7 @@ import { useHasPermission } from '@/features/rbac/useHasPermission';
 import { supabase } from '@/lib/supabase/client';
 import { useGeocodeUnmapped } from './geocode';
 import { BallotChase } from './BallotChase';
+import { DoorstepDonations } from './DoorstepDonations';
 import { TurfInsights } from './TurfInsights';
 import {
   isKnockable,
@@ -434,6 +435,17 @@ export function TurfTab({ project }: { project: Project }) {
             )}
           </div>
         )}
+      </div>
+
+      {/* Doorstep fundraising: warm doors from real canvass notes + the
+          20-second ask + canvasser leaderboard */}
+      <div id="tool-doorstep_donations">
+        <DoorstepDonations
+          orgId={project.org_id}
+          projectId={project.id}
+          voters={voters ?? []}
+          canUseAi={Boolean(canUseAi.data)}
+        />
       </div>
 
       {/* Anchors match TOOL_LOCATIONS: field coach + note digest both live in

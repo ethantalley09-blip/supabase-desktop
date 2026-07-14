@@ -30,6 +30,7 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'content_pack', label: 'Content Pack', description: 'One brief -> email/text/script/social set.', category: 'comms', requires: ['comms.manage'] },
 
   // Turf
+  { id: 'doorstep_donations', label: 'Doorstep Donations', description: 'Warm doors + 20-second ask + canvasser leaderboard.', category: 'turf', requires: ['turf.view'] },
   { id: 'smart_segments', label: 'Smart Segments', description: 'Describe a voter universe, get a walk list.', category: 'turf', requires: ['turf.view'] },
   { id: 'field_coach', label: 'Field Coach', description: 'Turf-specific prioritized next actions.', category: 'turf', requires: ['turf.view'] },
   { id: 'note_digest', label: 'Note Digest', description: 'Summarizes canvass notes into themes.', category: 'turf', requires: ['turf.view'] },
@@ -80,7 +81,7 @@ export const TOOL_LOCATIONS: Record<string, ToolLocation> = Object.fromEntries(
     const tab =
       ['ask_data', 'campaign_coach', 'message_studio', 'content_pack', 'smart_segments'].includes(t.id)
         ? 'ai'
-        : ['field_coach', 'note_digest', 'import_mapping'].includes(t.id)
+        : ['field_coach', 'note_digest', 'import_mapping', 'doorstep_donations'].includes(t.id)
           ? 'turf'
           : ['broadcast_draft', 'outreach_booster'].includes(t.id)
             ? 'comms'

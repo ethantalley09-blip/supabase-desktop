@@ -186,6 +186,23 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   call. Tab gated on compete.view; AI tools inside additionally on
   ai_module + ai.use; tools registered under the `compete` category with
   deep-link anchors like every other tab.
+  **Doorstep Donations** (`turf/DoorstepDonations.tsx`, pure math in
+  `turf/doorstep.ts` + tests): the cross-domain flagship — warm-door scoring
+  from real canvass-note signals (explainable: every score shows its
+  reasons; opposed/do-not-contact/moved doors are excluded), a
+  `doorstep_pitch` AI purpose (20-second spoken small-dollar ask, honest
+  only), and a canvasser leaderboard attributing real gifts via
+  `donations.recorded_by` (the useDonations select embeds
+  `recorder:recorded_by(full_name,email)`). Registered under turf with just
+  `turf.view` so canvassers get it. **Overview command center**
+  (`projects/tabs/OverviewTab.tsx`, pure viz math in `overviewMath.ts` +
+  tests): stat cards, 30-day SVG donation sparkline, progress bars, and a
+  "Where to push next" list whose rows deep-link via `onOpenTool` — all
+  client-side math on already-cached queries, zero AI calls. **Performance:**
+  query defaults are staleTime 60s / gcTime 10min / no refetch-on-focus
+  (QueryProvider), and every project tab except Overview is code-split via
+  React.lazy in `ProjectDetailsPage` (entry chunk halved; the Leaflet map
+  loads only when Turf opens) — keep new heavy deps inside a lazy tab.
   Model responses that must be JSON go through `src/lib/ai/extractJson.ts`
   (import fixer, Smart Segments, Content Pack, and every fundraising-AI
   purpose above). Deploy steps: `docs/DEPLOY_AI.md`. User guide:

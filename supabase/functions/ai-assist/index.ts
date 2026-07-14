@@ -52,7 +52,8 @@ type Purpose =
   | 'rebuttal'
   | 'debate_prep'
   | 'self_opposition'
-  | 'opponent_digest';
+  | 'opponent_digest'
+  | 'doorstep_pitch';
 
 type Body = {
   orgId: string;
@@ -554,7 +555,21 @@ Rules:
 - Suggest a concrete per-donor amount ONLY if the context provides an average gift to anchor on.
 - Return JSON only.`;
 
+const DOORSTEP_PITCH_SYSTEM = `You write a 20-SECOND spoken doorstep donation ask for a canvasser standing at a warm door (the voter previously showed support — the signals are provided). Doorstep giving is small-dollar and personal.
+
+Return ONLY a JSON object:
+{"pitch":"...","if_yes":"...","if_no":"...","suggested_ask_dollars":0}
+
+Rules:
+- pitch: 3-4 short spoken sentences max — natural, warm, readable aloud in ~20 seconds. Reference the voter's actual signal (e.g. they wanted a yard sign) naturally, never creepily ("our records show...").
+- Ask small: suggested_ask_dollars between 5 and 25 unless the context justifies more. "Even $5 helps" energy — the goal is participation, not the amount.
+- if_yes: one sentence — thank + exactly how to give (the campaign's method is provided; if none provided, say "we'll text you a secure link").
+- if_no: one gracious sentence that keeps the relationship — no pressure, no guilt, leave them feeling good.
+- Honest only: no fabricated matching funds, deadlines, or claims. If a real deadline is provided, you may use it.
+- Return JSON only.`;
+
 function systemFor(purpose: Purpose): string {
+  if (purpose === 'doorstep_pitch') return DOORSTEP_PITCH_SYSTEM;
   if (purpose === 'contrast_message') return CONTRAST_SYSTEM;
   if (purpose === 'rebuttal') return REBUTTAL_SYSTEM;
   if (purpose === 'debate_prep') return DEBATE_PREP_SYSTEM;
@@ -736,6 +751,10 @@ function buildPrompt(b: Body): string {
 
   if (b.purpose === 'opponent_digest') {
     return `Opponent's logged public record (JSON):\n${b.context}\n\nDigest their messaging themes, shift, and gaps.`;
+  }
+
+  if (b.purpose === 'doorstep_pitch') {
+    return `Warm door context (JSON):\n${b.context}\n\nWrite the 20-second doorstep ask.`;
   }
 
   const lines: string[] = [];

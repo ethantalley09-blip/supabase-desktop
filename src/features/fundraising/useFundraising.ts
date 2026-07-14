@@ -18,7 +18,10 @@ export type Donation = {
   amount_cents: number;
   donated_at: string;
   payment_method: string | null;
+  recorded_by?: string | null;
   donors?: { full_name: string } | null;
+  // Who logged the gift — powers the doorstep canvasser leaderboard.
+  recorder?: { full_name: string | null; email: string | null } | null;
 };
 
 // Compliance tools unlock once a project's lifetime donations cross this.
@@ -48,7 +51,7 @@ export function useDonations(projectId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('donations')
-        .select('*, donors(full_name)')
+        .select('*, donors(full_name), recorder:recorded_by(full_name, email)')
         .eq('project_id', projectId!)
         .order('donated_at', { ascending: false });
       if (error) throw error;

@@ -38,7 +38,8 @@ export type AiPurpose =
   | 'rebuttal'
   | 'debate_prep'
   | 'self_opposition'
-  | 'opponent_digest';
+  | 'opponent_digest'
+  | 'doorstep_pitch';
 
 export type AiAssistInput = {
   orgId: string;

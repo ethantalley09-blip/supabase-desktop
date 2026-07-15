@@ -607,7 +607,7 @@ export function TurfTab({ project }: { project: Project }) {
       )}
 
       {lastAssignment && <p className="text-sm text-emerald-600">{lastAssignment}</p>}
-      {canManage.data && <GeocodeAdvanced projectId={project.id} voters={voters ?? []} />}
+      {canManage.data && <div id="tool-geocode_coach"><GeocodeAdvanced projectId={project.id} orgId={project.org_id} voters={voters ?? []} canUseAi={Boolean(canUseAi.data)} /></div>}
       {createTerritory.isError && (
         <p className="text-sm text-red-600">{(createTerritory.error as Error).message}</p>
       )}

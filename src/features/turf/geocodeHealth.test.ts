@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeGeocodeHealth, needsManualFix, type GeocodeHealthInput } from './geocodeHealth';
+import { buildGeocodeAiSnapshot, computeGeocodeHealth, needsManualFix, type GeocodeHealthInput } from './geocodeHealth';
 
 const voter = (over: Partial<GeocodeHealthInput>): GeocodeHealthInput => ({
   address_line: '12 Oak St',
@@ -55,5 +55,21 @@ describe('needsManualFix', () => {
   it('excludes a mapped no_match/error voter (shouldn\'t happen, but lat wins if it does)', () => {
     const voters = [voter({ lat: 40.1, geocode_status: 'no_match' })];
     expect(needsManualFix(voters)).toHaveLength(0);
+  });
+});
+
+describe('buildGeocodeAiSnapshot', () => {
+  it('contains only aggregate geocoding health data', () => {
+    const snapshot = buildGeocodeAiSnapshot([voter({ lat: 40.1 }), voter({ geocode_status: 'no_match' })]);
+    expect(snapshot).toEqual({
+      total_voters: 2,
+      mapped: 1,
+      mapping_coverage_percent: 50,
+      missing_address: 0,
+      ready_to_geocode: 0,
+      ambiguous_matches: 0,
+      no_match: 1,
+      lookup_failures: 0
+    });
   });
 });

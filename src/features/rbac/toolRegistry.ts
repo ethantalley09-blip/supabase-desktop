@@ -35,6 +35,7 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'field_coach', label: 'Field Coach', description: 'Turf-specific prioritized next actions.', category: 'turf', requires: ['turf.view'] },
   { id: 'note_digest', label: 'Note Digest', description: 'Summarizes canvass notes into themes.', category: 'turf', requires: ['turf.view'] },
   { id: 'import_mapping', label: 'Import Mapping', description: 'AI column-mapping for messy voter files.', category: 'turf', requires: ['turf.manage'] },
+  { id: 'geocode_coach', label: 'AI Geocode Coach', description: 'Turns mapping health into a prioritized recovery plan.', category: 'turf', requires: ['turf.manage'] },
   { id: 'volunteer_pipeline', label: 'Volunteer Pipeline', description: 'Re-engagement or promotion messages for real volunteer situations.', category: 'turf', requires: ['turf.view'] },
   { id: 'gotv_sprint_plan', label: 'GOTV Countdown Planner', description: 'Day-by-day turnout plan from real ballot-chase status.', category: 'turf', requires: ['turf.view'] },
 
@@ -98,7 +99,7 @@ export const TOOL_LOCATIONS: Record<string, ToolLocation> = Object.fromEntries(
     const tab: ToolLocation['tab'] =
       ['ask_data', 'campaign_coach', 'message_studio', 'content_pack', 'smart_segments'].includes(t.id)
         ? 'ai'
-        : ['field_coach', 'note_digest', 'import_mapping', 'doorstep_donations'].includes(t.id)
+        : ['field_coach', 'note_digest', 'import_mapping', 'doorstep_donations', 'geocode_coach'].includes(t.id)
           ? 'turf'
           : (t.category as ToolLocation['tab']);
     return [t.id, { tab, anchor: `tool-${t.id}` }];

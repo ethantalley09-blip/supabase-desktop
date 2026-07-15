@@ -1,8 +1,10 @@
-import { MapPinned, MapPinX, RefreshCw } from 'lucide-react';
+import { Bot, MapPinned, MapPinX, RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { computeGeocodeHealth, needsManualFix } from './geocodeHealth';
+import { useEntitlement } from '@/lib/entitlements/entitlements';
+import { useAiAssist } from '@/lib/ai/useAiAssist';
+import { buildGeocodeAiSnapshot, computeGeocodeHealth, needsManualFix } from './geocodeHealth';
 import { useGeocodeAllRemaining, useManualGeocode } from './geocode';
 import type { VoterRecord } from './useTurf';
 
@@ -19,7 +21,7 @@ const STATUS_LABEL: Record<string, string> = {
 // 25 at a time, and gives staff a manual fix -- an edited address to retry,
 // or hand-typed coordinates for the addresses that will never match (rural
 // routes, brand-new construction).
-export function GeocodeAdvanced({ projectId, voters }: { projectId: string; voters: VoterRecord[] }) {
+export function GeocodeAdvanced({ projectId, orgId, voters, canUseAi }: { projectId: string; orgId: string; voters: VoterRecord[]; canUseAi: boolean }) {
   const geocodeAll = useGeocodeAllRemaining();
   const manualFix = useManualGeocode();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -27,10 +29,13 @@ export function GeocodeAdvanced({ projectId, voters }: { projectId: string; vote
   const [editAddress, setEditAddress] = useState('');
   const [manualLat, setManualLat] = useState('');
   const [manualLng, setManualLng] = useState('');
+  const entitlement = useEntitlement(orgId, 'ai_module');
+  const aiCoach = useAiAssist();
 
   const health = useMemo(() => computeGeocodeHealth(voters), [voters]);
   const fixQueue = useMemo(() => needsManualFix(voters).slice(0, 25), [voters]);
   const remaining = health.unattempted;
+  const aiSnapshot = useMemo(() => JSON.stringify(buildGeocodeAiSnapshot(voters)), [voters]);
 
   const runAll = () => {
     setProgress({ done: 0, total: Math.min(remaining, 300) });
@@ -73,6 +78,22 @@ export function GeocodeAdvanced({ projectId, voters }: { projectId: string; vote
         <Stat label="No match" value={health.noMatch} warn={health.noMatch > 0} />
         <Stat label="Lookup failed" value={health.error} warn={health.error > 0} />
       </div>
+
+      {canUseAi && entitlement.data && (
+        <div className="rounded-md border border-violet-200 bg-violet-50 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="flex items-center gap-1.5 text-sm font-medium text-violet-900"><Bot className="h-4 w-4" />AI Geocode Coach</p>
+              <p className="mt-0.5 text-xs text-violet-700">Prioritizes your mapping backlog using aggregate counts only—never voter names or addresses.</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => aiCoach.mutate({ orgId, projectId, purpose: 'geocode_strategy', context: aiSnapshot })} disabled={aiCoach.isPending}>
+              {aiCoach.isPending ? 'Planning…' : 'Build recovery plan'}
+            </Button>
+          </div>
+          {aiCoach.isError && <p className="mt-2 text-sm text-red-600">{(aiCoach.error as Error).message}</p>}
+          {aiCoach.data && <div className="mt-3 whitespace-pre-wrap rounded-md border border-violet-200 bg-white p-3 text-sm text-neutral-800">{aiCoach.data.text}</div>}
+        </div>
+      )}
 
       {remaining > 0 && (
         <div className="flex items-center gap-3">

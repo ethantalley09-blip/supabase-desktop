@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, UploadCloud } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Sparkles, UploadCloud } from 'lucide-react';
 import { useState } from 'react';
 import type { DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,11 @@ import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { supabase } from '@/lib/supabase/client';
 import type { Json } from '@/lib/supabase/types';
 import { useAuth } from '@/providers/AuthProvider';
-import { guessFieldMapping, parseVoterFile, type ParsedSheet } from './parseFile';
+import { guessFieldMapping, isBlankRow, parseVoterFile, type ParsedSheet } from './parseFile';
 
 type FieldMapping = ReturnType<typeof guessFieldMapping>;
+type ImportResult = { inserted: number; failed: number; skippedBlank: number; chunkErrors: string[] };
+const CHUNK_SIZE = 500;
 
 export function ImportWizard({
   projectId,
@@ -40,6 +42,7 @@ export function ImportWizard({
   });
   const [parseError, setParseError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const onFile = async (file: File) => {
     setParseError(null);
@@ -111,13 +114,19 @@ export function ImportWizard({
   };
 
   const importRows = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<ImportResult> => {
+      // Blank rows (every column empty) count as nothing to import, not a
+      // successfully-imported empty voter -- filtered before the batch is
+      // even created so the batch's row_count is honest from the start.
+      const usableRows = sheet!.rows.filter((r) => !isBlankRow(r));
+      const skippedBlank = sheet!.rows.length - usableRows.length;
+
       const { data: batch, error: batchError } = await supabase
         .from('import_batches')
         .insert({
           project_id: projectId,
           source_filename: filename,
-          row_count: sheet!.rows.length,
+          row_count: usableRows.length,
           imported_by: user!.id
         })
         .select()
@@ -129,7 +138,7 @@ export function ImportWizard({
         return Number.isFinite(n) && v !== '' && v !== null ? n : null;
       };
 
-      const records = sheet!.rows.map((row) => ({
+      const records = usableRows.map((row) => ({
         project_id: projectId,
         import_batch_id: batch.id,
         data: row as Json,
@@ -140,17 +149,42 @@ export function ImportWizard({
       }));
 
       // Chunked inserts keep payloads under PostgREST limits for big lists.
-      const chunkSize = 500;
-      for (let i = 0; i < records.length; i += chunkSize) {
-        const { error } = await supabase.from('voter_records').insert(records.slice(i, i + chunkSize));
-        if (error) throw error;
+      // Resilient by design: one bad chunk (a transient network blip, a
+      // single malformed value PostgREST rejects) doesn't abort the rest --
+      // every other chunk still lands, and the failure is reported clearly
+      // instead of leaving an unexplained partial import.
+      let inserted = 0;
+      let failed = 0;
+      const chunkErrors: string[] = [];
+      setProgress({ done: 0, total: records.length });
+
+      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+        const chunk = records.slice(i, i + CHUNK_SIZE);
+        const { error } = await supabase.from('voter_records').insert(chunk);
+        if (error) {
+          failed += chunk.length;
+          chunkErrors.push(`Rows ${i + 1}–${i + chunk.length}: ${error.message}`);
+        } else {
+          inserted += chunk.length;
+        }
+        setProgress({ done: Math.min(i + CHUNK_SIZE, records.length), total: records.length });
       }
-      return records.length;
+
+      // Reflect what actually landed, not the pre-insert estimate.
+      if (inserted !== usableRows.length) {
+        await supabase.from('import_batches').update({ row_count: inserted }).eq('id', batch.id);
+      }
+
+      return { inserted, failed, skippedBlank, chunkErrors };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['voter-records', projectId] });
-      onDone();
-    }
+      setProgress(null);
+      // Only auto-close on a clean, complete import -- a partial failure
+      // stays on screen so staff actually see what happened.
+      if (result.failed === 0) onDone();
+    },
+    onError: () => setProgress(null)
   });
 
   return (
@@ -174,7 +208,8 @@ export function ImportWizard({
             </p>
             <p className="text-xs text-neutral-400">
               CSV, Excel (.xlsx/.xls/.xlsm), OpenDocument (.ods), or tab-delimited (.tsv/.txt) —
-              whatever your voter file export already is, no reformatting needed.
+              whatever your voter file export already is, no reformatting needed. Bulk files of
+              any size are chunked automatically.
             </p>
             <input
               type="file"
@@ -219,6 +254,16 @@ export function ImportWizard({
               {aiNotes}
             </p>
           )}
+          {sheet.parseWarnings.length > 0 && (
+            <p className="flex items-start gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {sheet.parseWarnings.length} row{sheet.parseWarnings.length === 1 ? '' : 's'} had a
+              formatting issue (e.g. an extra or missing column) — worth a spot-check after
+              import: row{sheet.parseWarnings.length === 1 ? '' : 's'}{' '}
+              {sheet.parseWarnings.slice(0, 8).map((w) => w.row).join(', ')}
+              {sheet.parseWarnings.length > 8 ? ', …' : ''}.
+            </p>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             {(
@@ -250,15 +295,56 @@ export function ImportWizard({
           {importRows.isError && (
             <p className="text-sm text-red-600">{(importRows.error as Error).message}</p>
           )}
+          {progress && importRows.isPending && (
+            <div className="space-y-1">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+                <div
+                  className="h-full rounded-full bg-neutral-900 transition-all"
+                  style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-neutral-400">
+                Importing {progress.done.toLocaleString()} of {progress.total.toLocaleString()}…
+              </p>
+            </div>
+          )}
+          {importRows.data && (
+            <div
+              className={`space-y-1 rounded-md border p-3 text-xs ${
+                importRows.data.failed === 0
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border-amber-200 bg-amber-50 text-amber-800'
+              }`}
+            >
+              <p className="flex items-center gap-1.5 font-medium">
+                {importRows.data.failed === 0 ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                )}
+                {importRows.data.inserted.toLocaleString()} imported
+                {importRows.data.failed > 0 && `, ${importRows.data.failed.toLocaleString()} failed`}
+                {importRows.data.skippedBlank > 0 && ` (${importRows.data.skippedBlank} blank rows skipped)`}
+              </p>
+              {importRows.data.chunkErrors.map((msg, i) => (
+                <p key={i} className="text-amber-700">{msg}</p>
+              ))}
+              {importRows.data.failed > 0 && (
+                <Button size="sm" variant="outline" className="mt-1" onClick={onDone}>
+                  Done
+                </Button>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-2">
             <Button size="sm" onClick={() => importRows.mutate()} disabled={importRows.isPending}>
-              {importRows.isPending ? 'Importing…' : `Import ${sheet.rows.length} records`}
+              {importRows.isPending ? 'Importing…' : `Import ${sheet.rows.length.toLocaleString()} records`}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSheet(null)}>
+            <Button variant="ghost" size="sm" onClick={() => setSheet(null)} disabled={importRows.isPending}>
               Choose different file
             </Button>
-            <Button variant="ghost" size="sm" onClick={onDone}>
+            <Button variant="ghost" size="sm" onClick={onDone} disabled={importRows.isPending}>
               Cancel
             </Button>
           </div>

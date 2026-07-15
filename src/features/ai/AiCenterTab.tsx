@@ -16,6 +16,7 @@ import type { ToolLocation } from '@/features/rbac/toolRegistry';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { useAiAssist, type AiPurpose } from '@/lib/ai/useAiAssist';
 import { AiDashboard } from './AiDashboard';
+import { CampaignCommandCenter } from './CampaignCommandCenter';
 import { ContentPack } from './ContentPack';
 import { RefineBar } from './RefineBar';
 import { SmartSegments } from './SmartSegments';
@@ -123,6 +124,13 @@ export function AiCenterTab({
 
       {/* Per-role dashboard: category tabs + drag-and-drop arrangement */}
       <AiDashboard orgId={project.org_id} onOpenTool={onOpenTool} />
+
+      <CampaignCommandCenter
+        voters={voters ?? []}
+        territories={territories ?? []}
+        donations={donations ?? []}
+        totalCents={donationTotal ?? 0}
+      />
 
       {/* Ask your data */}
       {has('ask_data') && (

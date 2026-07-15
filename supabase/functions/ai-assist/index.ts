@@ -64,7 +64,8 @@ type Purpose =
   | 'mistake_response'
   | 'interview_prep'
   | 'endorsement_ask'
-  | 'quick_insight';
+  | 'quick_insight'
+  | 'geocode_strategy';
 
 type Body = {
   orgId: string;
@@ -123,6 +124,10 @@ Hard rules:
 - If the snapshot doesn't contain what's needed, say so plainly and name what data would answer it.
 - Lead with the direct answer (the number), then one short sentence of context. Keep it to a few sentences.
 - Write for a non-technical beginner. No jargon, no SQL, no preamble.`;
+
+const GEOCODE_SYSTEM = `You are a field-data operations coach. You receive ONLY aggregate geocoding health counts, never voter names or addresses.
+
+Give exactly three prioritized actions to improve map coverage. For each: state the action, cite the relevant supplied count, and name the Lynx workflow to use (batch geocoding, manual address correction, or manual pin). Do not fabricate data, infer anything about individual voters, or give election-law advice. Be concise and practical.`;
 
 // field_coach: proactive prioritized guidance — the "what do I do now?" a
 // beginner organizer needs, which competitors don't provide.
@@ -772,6 +777,7 @@ function systemFor(purpose: Purpose): string {
   if (purpose === 'compliant_variation') return COMPLIANT_VARIATION_SYSTEM;
   if (purpose === 'note_summary') return ANALYSIS_SYSTEM;
   if (purpose === 'data_qa') return DATA_SYSTEM;
+  if (purpose === 'geocode_strategy') return GEOCODE_SYSTEM;
   if (purpose === 'field_coach') return COACH_SYSTEM;
   if (purpose === 'import_mapping') return IMPORT_SYSTEM;
   if (purpose === 'translate') return TRANSLATE_SYSTEM;
@@ -794,6 +800,10 @@ function buildPrompt(b: Body): string {
 
   if (b.purpose === 'field_coach') {
     return `Data snapshot (JSON):\n${b.context}\n\nGive the top 3 next actions for this project.`;
+  }
+
+  if (b.purpose === 'geocode_strategy') {
+    return `Aggregate geocoding health (JSON):\n${b.context}\n\nCreate the prioritized geocoding recovery plan.`;
   }
 
   if (b.purpose === 'import_mapping') {
@@ -1035,7 +1045,7 @@ Deno.serve(async (req) => {
   } else if (body.purpose === 'data_qa') {
     if (!body.context?.trim()) return json({ error: 'context (data snapshot) is required' }, 400);
     if (!body.instructions?.trim()) return json({ error: 'a question is required' }, 400);
-  } else if (body.purpose === 'field_coach' || body.purpose === 'import_mapping') {
+  } else if (body.purpose === 'field_coach' || body.purpose === 'import_mapping' || body.purpose === 'geocode_strategy') {
     if (!body.context?.trim()) return json({ error: 'context is required' }, 400);
   } else if (body.purpose === 'translate') {
     if (!body.instructions?.trim()) return json({ error: 'text to translate is required' }, 400);

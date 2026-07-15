@@ -19,6 +19,22 @@ export type GeocodeHealth = {
   pctMapped: number;
 };
 
+// This is deliberately aggregate-only. It is safe to send to the AI coach:
+// no names, addresses, coordinates, or individual voter rows leave the app.
+export function buildGeocodeAiSnapshot(voters: GeocodeHealthInput[]): Record<string, number> {
+  const health = computeGeocodeHealth(voters);
+  return {
+    total_voters: health.total,
+    mapped: health.mapped,
+    mapping_coverage_percent: health.pctMapped,
+    missing_address: health.noAddress,
+    ready_to_geocode: health.unattempted,
+    ambiguous_matches: health.ambiguous,
+    no_match: health.noMatch,
+    lookup_failures: health.error
+  };
+}
+
 export function computeGeocodeHealth(voters: GeocodeHealthInput[]): GeocodeHealth {
   let mapped = 0;
   let noAddress = 0;

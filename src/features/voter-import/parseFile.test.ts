@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { guessFieldMapping } from './parseFile';
+import { guessFieldMapping, isBlankRow } from './parseFile';
 
 describe('guessFieldMapping', () => {
   it('maps standard voter-file headers', () => {
@@ -32,5 +32,27 @@ describe('guessFieldMapping', () => {
   it('returns empty strings for unmatched fields', () => {
     const m = guessFieldMapping(['precinct', 'vote_history']);
     expect(m).toEqual({ full_name: '', address_line: '', lat: '', lng: '' });
+  });
+});
+
+describe('isBlankRow', () => {
+  it('treats an all-empty-string row as blank', () => {
+    expect(isBlankRow({ name: '', address: '', city: '' })).toBe(true);
+  });
+
+  it('treats an all-whitespace row as blank', () => {
+    expect(isBlankRow({ name: '   ', address: '\t' })).toBe(true);
+  });
+
+  it('treats null/undefined-only values as blank', () => {
+    expect(isBlankRow({ name: null, address: undefined })).toBe(true);
+  });
+
+  it('is not blank if any single column has real content', () => {
+    expect(isBlankRow({ name: '', address: '12 Oak St', city: '' })).toBe(false);
+  });
+
+  it('a row of all zeros is not blank (0 is real data, not empty)', () => {
+    expect(isBlankRow({ lat: 0, lng: 0 })).toBe(false);
   });
 });

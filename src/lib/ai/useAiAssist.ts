@@ -50,7 +50,8 @@ export type AiPurpose =
   | 'mistake_response'
   | 'interview_prep'
   | 'endorsement_ask'
-  | 'quick_insight';
+  | 'quick_insight'
+  | 'geocode_strategy';
 
 export type AiAssistInput = {
   orgId: string;

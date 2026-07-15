@@ -4,6 +4,10 @@ import * as XLSX from 'xlsx';
 export type ParsedSheet = {
   columns: string[];
   rows: Record<string, unknown>[];
+  // Rows Papaparse flagged as malformed (wrong field count, etc.) but still
+  // did its best to parse -- surfaced so staff know to spot-check them,
+  // rather than silently importing possibly-misaligned data.
+  parseWarnings: { row: number; message: string }[];
 };
 
 // Parses a voter list file into structured JSON rows. This is the
@@ -26,7 +30,8 @@ export async function parseVoterFile(file: File): Promise<ParsedSheet> {
         complete: (result) => {
           resolve({
             columns: result.meta.fields ?? [],
-            rows: result.data
+            rows: result.data,
+            parseWarnings: result.errors.map((e) => ({ row: (e.row ?? -1) + 1, message: e.message }))
           });
         },
         error: reject
@@ -39,7 +44,13 @@ export async function parseVoterFile(file: File): Promise<ParsedSheet> {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-  return { columns, rows };
+  return { columns, rows, parseWarnings: [] };
+}
+
+// A row with nothing usable in it -- every column blank/whitespace. Filtered
+// out before insert so it doesn't count as a "successfully imported" record.
+export function isBlankRow(row: Record<string, unknown>): boolean {
+  return Object.values(row).every((v) => v === null || v === undefined || String(v).trim() === '');
 }
 
 // Best-effort auto-detection of common voter-file column names, editable by

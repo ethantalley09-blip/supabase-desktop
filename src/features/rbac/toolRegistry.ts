@@ -35,6 +35,8 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'field_coach', label: 'Field Coach', description: 'Turf-specific prioritized next actions.', category: 'turf', requires: ['turf.view'] },
   { id: 'note_digest', label: 'Note Digest', description: 'Summarizes canvass notes into themes.', category: 'turf', requires: ['turf.view'] },
   { id: 'import_mapping', label: 'Import Mapping', description: 'AI column-mapping for messy voter files.', category: 'turf', requires: ['turf.manage'] },
+  { id: 'volunteer_pipeline', label: 'Volunteer Pipeline', description: 'Re-engagement or promotion messages for real volunteer situations.', category: 'turf', requires: ['turf.view'] },
+  { id: 'gotv_sprint_plan', label: 'GOTV Countdown Planner', description: 'Day-by-day turnout plan from real ballot-chase status.', category: 'turf', requires: ['turf.view'] },
 
   // Comms
   { id: 'broadcast_draft', label: 'Draft Broadcast', description: 'AI-drafted team broadcasts and replies.', category: 'comms', requires: ['comms.broadcast'] },
@@ -45,6 +47,7 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'media_pitch', label: 'Media Pitch Builder', description: 'Personalized pitch to a named reporter.', category: 'comms', requires: ['comms.manage'] },
   { id: 'direct_mail', label: 'Direct Mail Designer', description: 'Postcard-sized headline + body + CTA.', category: 'comms', requires: ['comms.manage'] },
   { id: 'phone_script', label: 'Phone / Text Script Builder', description: 'Phone bank and P2P texting scripts.', category: 'comms', requires: ['comms.manage'] },
+  { id: 'endorsement_ask', label: 'Endorsement Outreach Builder', description: 'Personalized endorsement request to a named organization or leader.', category: 'comms', requires: ['comms.manage'] },
 
   // Fundraising AI suite
   { id: 'donor_insights', label: 'Donor Insights', description: 'Connector scoring and at-risk donors.', category: 'fundraising', requires: ['fundraising.view'] },
@@ -74,7 +77,9 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'contrast_builder', label: 'Contrast Builder', description: 'Their logged position vs. ours, issues only.', category: 'compete', requires: ['compete.view'] },
   { id: 'opponent_digest', label: 'Message Radar', description: 'Their themes, message drift, and avoided issues.', category: 'compete', requires: ['compete.view'] },
   { id: 'debate_prep', label: 'Debate Prep', description: '5 likely attacks with honest responses + pivots.', category: 'compete', requires: ['compete.view'] },
-  { id: 'red_team', label: 'Red Team', description: 'Attack your own record before the opponent does.', category: 'compete', requires: ['compete.view'] }
+  { id: 'red_team', label: 'Red Team', description: 'Attack your own record before the opponent does.', category: 'compete', requires: ['compete.view'] },
+  { id: 'mistake_response', label: 'Mistake Response', description: 'Honest accountability statement for a real candidate mistake.', category: 'compete', requires: ['compete.view'] },
+  { id: 'interview_prep', label: 'Interview Prep', description: 'Prep for a friendly local interview, not a debate.', category: 'compete', requires: ['compete.view'] }
 ];
 
 // Where each tool's working UI lives: which project tab hosts it and the

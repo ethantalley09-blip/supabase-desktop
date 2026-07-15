@@ -254,6 +254,24 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   (import fixer, Smart Segments, Content Pack, and every fundraising-AI
   purpose above). Deploy steps: `docs/DEPLOY_AI.md`. User guide:
   `docs/AI_FEATURES.md`.
+  **Pain-point round** (5 new purposes, 48 total, no new migration — all
+  drafting-only): volunteer_pipeline (`turf/VolunteerPipeline.tsx` — donors
+  get churn_prediction and a win-back sequence, volunteers got nothing;
+  staff describe a real lapse or a real moment of readiness for the org
+  member, no shift-tracking table exists so this is honestly input-driven
+  rather than a fabricated engagement score), gotv_sprint_plan
+  (`turf/GotvSprintPlan.tsx` — the turnout-operations analog of the
+  Fundraising tab's FEC Sprint Planner; staff give the real election date,
+  the day-by-day plan is grounded in real ballot_status/contact_status
+  counts off voter_records and the real active-member count),
+  mistake_response (`compete/MistakeResponse.tsx` — accountability, not
+  spin, for a REAL error the campaign's own candidate made; distinct from
+  Red Team, which is anticipatory, and Issue Response, which reacts to
+  external events; nothing typed here is saved, same sensitivity as Red
+  Team), interview_prep (`compete/InterviewPrep.tsx` — friendly/routine
+  press prep, the non-adversarial counterpart to Debate Prep), and
+  endorsement_ask (`comms/EndorsementAskBuilder.tsx` — a personalized ask to
+  a named organization/leader, distinct from donor asks and media pitches).
 - **Data-driven purposes send only aggregate snapshots, never raw rows.**
   `data_qa`/`field_coach` use `buildTurfSnapshot` (`turf/route.ts`) and
   `buildFundraisingSnapshot` (`fundraising/fundraisingSnapshot.ts`);

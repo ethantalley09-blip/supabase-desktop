@@ -190,3 +190,51 @@ export function useOpponentDigest() {
     }
   });
 }
+
+export type MistakeResponsePack = { statement: string; social_post: string; canvasser_talking_point: string };
+
+// Accountability, not spin, for a REAL error the campaign's own candidate
+// made -- distinct from Red Team (anticipates attacks before they land) and
+// Issue Response Engine (reacts to external news events). Nothing typed here
+// is persisted, same sensitivity as Red Team.
+export function useMistakeResponse() {
+  const ai = useAiAssist();
+  return useMutation({
+    mutationFn: async (input: { orgId: string; projectId: string; whatHappened: string }) => {
+      const result = await ai.mutateAsync({
+        orgId: input.orgId,
+        projectId: input.projectId,
+        purpose: 'mistake_response',
+        context: JSON.stringify({ what_happened: input.whatHappened })
+      });
+      const parsed = extractJson<MistakeResponsePack>(result.text);
+      if (!parsed) throw new Error('Could not parse the accountability response');
+      return parsed;
+    }
+  });
+}
+
+export type InterviewPrepSheet = {
+  bridge_phrases: string[];
+  likely_questions: { question: string; suggested_answer: string }[];
+  one_thing_to_land: string;
+};
+
+// Friendly/routine press prep (local news, podcast) -- distinct from Debate
+// Prep's adversarial exchange.
+export function useInterviewPrep() {
+  const ai = useAiAssist();
+  return useMutation({
+    mutationFn: async (input: { orgId: string; projectId: string; format: string; topics: string }) => {
+      const result = await ai.mutateAsync({
+        orgId: input.orgId,
+        projectId: input.projectId,
+        purpose: 'interview_prep',
+        context: JSON.stringify({ format: input.format, likely_topics: input.topics })
+      });
+      const parsed = extractJson<InterviewPrepSheet>(result.text);
+      if (!parsed) throw new Error('Could not parse the interview prep sheet');
+      return parsed;
+    }
+  });
+}

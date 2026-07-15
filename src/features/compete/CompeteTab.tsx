@@ -5,6 +5,8 @@ import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { ContrastBuilder } from './ContrastBuilder';
 import { DebatePrep } from './DebatePrep';
 import { FilingGap } from './FilingGap';
+import { InterviewPrep } from './InterviewPrep';
+import { MistakeResponse } from './MistakeResponse';
 import { OpponentDigest } from './OpponentDigest';
 import { OpponentLog } from './OpponentLog';
 import { RapidRebuttal } from './RapidRebuttal';
@@ -67,11 +69,17 @@ export function CompeteTab({ project }: { project: Project }) {
           <div id="tool-red_team">
             <RedTeam orgId={project.org_id} projectId={project.id} />
           </div>
+          <div id="tool-mistake_response">
+            <MistakeResponse orgId={project.org_id} projectId={project.id} />
+          </div>
+          <div id="tool-interview_prep">
+            <InterviewPrep orgId={project.org_id} projectId={project.id} />
+          </div>
         </>
       ) : (
         <p className="rounded-md border border-dashed border-neutral-300 p-4 text-sm text-neutral-400">
-          The AI tools on this tab (rebuttal, contrast, digest, debate prep, red team) unlock with
-          the AI module.
+          The AI tools on this tab (rebuttal, contrast, digest, debate prep, red team, mistake
+          response, interview prep) unlock with the AI module.
         </p>
       )}
     </div>

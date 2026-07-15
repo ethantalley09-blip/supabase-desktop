@@ -125,3 +125,25 @@ export function usePhoneScript() {
     }
   });
 }
+
+export type EndorsementAskPack = { subject: string; body: string };
+
+// Endorsement Outreach Builder: donor asks and media pitches exist, asking
+// an organization or community leader for their endorsement is a distinct
+// ask with its own stakes and structure -- had no tool until now.
+export function useEndorsementAsk() {
+  const ai = useAiAssist();
+  return useMutation({
+    mutationFn: async (input: { orgId: string; projectId: string; who: string; whyFit: string }) => {
+      const result = await ai.mutateAsync({
+        orgId: input.orgId,
+        projectId: input.projectId,
+        purpose: 'endorsement_ask',
+        context: JSON.stringify({ organization_or_leader: input.who, why_they_fit: input.whyFit })
+      });
+      const parsed = extractJson<EndorsementAskPack>(result.text);
+      if (!parsed) throw new Error('Could not parse the endorsement request');
+      return parsed;
+    }
+  });
+}

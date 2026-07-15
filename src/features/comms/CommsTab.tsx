@@ -14,6 +14,7 @@ import { useDonations } from '@/features/fundraising/useFundraising';
 import { useAuth } from '@/providers/AuthProvider';
 import { DirectMailDesigner } from './DirectMailDesigner';
 import { EmailCampaignStudio } from './EmailCampaignStudio';
+import { EndorsementAskBuilder } from './EndorsementAskBuilder';
 import { MediaPitchBuilder } from './MediaPitchBuilder';
 import { SocialSchedulerPanel } from './paid/SocialSchedulerPanel';
 import { PhoneScriptBuilder } from './PhoneScriptBuilder';
@@ -89,11 +90,12 @@ export function CommsTab({ project }: { project: Project }) {
               <div id="tool-media_pitch"><MediaPitchBuilder orgId={project.org_id} projectId={project.id} /></div>
               <div id="tool-direct_mail"><DirectMailDesigner orgId={project.org_id} projectId={project.id} /></div>
               <div id="tool-phone_script"><PhoneScriptBuilder orgId={project.org_id} projectId={project.id} /></div>
+              <div id="tool-endorsement_ask"><EndorsementAskBuilder orgId={project.org_id} projectId={project.id} /></div>
             </>
           ) : (
             <p className="rounded-md border border-dashed border-neutral-300 p-4 text-sm text-neutral-400">
-              Email, press release, media pitch, direct mail, and phone/text script drafting unlock
-              with the AI module.
+              Email, press release, media pitch, direct mail, phone/text script, and endorsement
+              outreach drafting unlock with the AI module.
             </p>
           )}
         </div>

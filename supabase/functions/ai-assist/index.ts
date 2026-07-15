@@ -58,7 +58,12 @@ type Purpose =
   | 'press_release'
   | 'media_pitch'
   | 'direct_mail'
-  | 'phone_script';
+  | 'phone_script'
+  | 'volunteer_pipeline'
+  | 'gotv_sprint_plan'
+  | 'mistake_response'
+  | 'interview_prep'
+  | 'endorsement_ask';
 
 type Body = {
   orgId: string;
@@ -638,12 +643,85 @@ Rules:
 - No pressure tactics; if staff note the person should be able to opt out, include a natural way to honor that.
 - Return JSON only.`;
 
+// volunteer_pipeline: retention/recruitment for the volunteer roster, the
+// mirror of the donor retention_sequence/churn_prediction pair but for field
+// staff instead of donors.
+const VOLUNTEER_PIPELINE_SYSTEM = `You draft a message to a campaign volunteer, given real facts staff provide about their involvement (recent activity, a lapse, or readiness for more responsibility).
+
+Return ONLY a JSON object: {"message":"...","suggested_next_step":"..."}
+
+Rules:
+- Use ONLY the facts provided about this volunteer — never invent shift counts, dates, or achievements not stated.
+- If the situation describes inactivity or lapsing, write a warm, no-guilt re-engagement message — burnout is normal, the goal is an easy door back in, not obligation.
+- If the situation describes strong engagement or readiness, recognize their specific real contribution and invite a concrete next step.
+- suggested_next_step: one concrete action staff should offer, grounded only in what's provided.
+- Warm, direct, human — never corporate or mass-market in tone.
+- Return JSON only.`;
+
+// gotv_sprint_plan: the turnout-operations analog of fec_sprint_plan — real
+// ballot-chase/capacity numbers and a real date in, a day-by-day plan out.
+const GOTV_SPRINT_SYSTEM = `You build a day-by-day Get-Out-The-Vote operations plan for the final stretch before election day, from real ballot-chase and volunteer-capacity numbers provided (outstanding ballots, contactable voter counts, active volunteer count, days remaining).
+
+Return ONLY a JSON object: {"daily_plan":[{"day":"2025-11-02","focus":"...","volunteer_allocation":"..."}],"priority_call":"..."}
+
+Rules:
+- One plan entry per remaining day, escalating specificity and urgency as election day nears.
+- Ground every day's focus in the real numbers provided — never invent a ward, precinct, or figure not in the data.
+- volunteer_allocation must reflect the real active volunteer count provided — never recommend more people than the campaign has.
+- priority_call: the single most important thing to do TODAY given the numbers.
+- Never fabricate polling data, projected turnout, or any number not provided. Return JSON only.`;
+
+// mistake_response: accountability, not spin, for a REAL error the campaign's
+// own candidate made — distinct from self_opposition (anticipatory) and
+// issue_response (external events).
+const MISTAKE_RESPONSE_SYSTEM = `Our own candidate made a real mistake — staff describe exactly what happened. You draft an honest accountability response, not spin.
+
+Return ONLY a JSON object: {"statement":"...","social_post":"...","canvasser_talking_point":"..."}
+
+Rules:
+- Use ONLY what staff describe as having happened — never soften, reframe, or add facts not stated.
+- statement: acknowledges the mistake plainly in the first sentence, takes real responsibility (no "if anyone was offended" non-apologies), states what's being done differently if applicable, under 120 words.
+- social_post: under 280 characters, same honesty, no defensiveness.
+- canvasser_talking_point: 1-2 spoken sentences a volunteer can say at the door if a voter brings it up — honest, brief, redirects to the campaign's real work.
+- Never spin, minimize with hedging qualifiers, or attack whoever raised it. Genuine accountability outperforms deflection.
+- Return JSON only.`;
+
+// interview_prep: friendly/routine press (local news, podcast) — a distinct
+// prep need from debate_prep's adversarial exchange.
+const INTERVIEW_PREP_SYSTEM = `You prep a candidate for a routine media interview (local news, podcast, radio — not an adversarial debate), given the outlet/format and the likely topics as staff describe them.
+
+Return ONLY a JSON object: {"bridge_phrases":["...","...","..."],"likely_questions":[{"question":"...","suggested_answer":"..."}],"one_thing_to_land":"..."}
+
+Rules:
+- bridge_phrases: 3 natural transition phrases for steering any question back to the campaign's real message.
+- likely_questions: 3 to 5 realistic questions based ONLY on the topics/format staff describe, each with a suggested honest answer, conversational in tone (this is friendly press, not a hostile exchange).
+- one_thing_to_land: the single message the candidate should make sure comes through regardless of what's asked.
+- Never invent facts, polling numbers, or endorsements not provided by staff.
+- Return JSON only.`;
+
+// endorsement_ask: a personalized ask to a named organization/leader —
+// distinct from donor asks and media pitches.
+const ENDORSEMENT_ASK_SYSTEM = `You write a personalized endorsement request to a specific organization or community leader, given their name and the real reason they're a fit, as staff describe it.
+
+Return ONLY a JSON object: {"subject":"...","body":"..."}
+
+Rules:
+- subject: under 60 characters, names the organization/leader.
+- body: under 200 words. Open with a genuine, SPECIFIC reason this endorsement matters, using only what staff provided — never invent shared history or a relationship that wasn't stated. State the ask plainly, offer to meet or answer questions, one clear next step.
+- No flattery not grounded in what's provided, no fabricated shared priorities.
+- Return JSON only.`;
+
 function systemFor(purpose: Purpose): string {
   if (purpose === 'email_campaign') return EMAIL_CAMPAIGN_SYSTEM;
   if (purpose === 'press_release') return PRESS_RELEASE_SYSTEM;
   if (purpose === 'media_pitch') return MEDIA_PITCH_SYSTEM;
   if (purpose === 'direct_mail') return DIRECT_MAIL_SYSTEM;
   if (purpose === 'phone_script') return PHONE_SCRIPT_SYSTEM;
+  if (purpose === 'volunteer_pipeline') return VOLUNTEER_PIPELINE_SYSTEM;
+  if (purpose === 'gotv_sprint_plan') return GOTV_SPRINT_SYSTEM;
+  if (purpose === 'mistake_response') return MISTAKE_RESPONSE_SYSTEM;
+  if (purpose === 'interview_prep') return INTERVIEW_PREP_SYSTEM;
+  if (purpose === 'endorsement_ask') return ENDORSEMENT_ASK_SYSTEM;
   if (purpose === 'doorstep_pitch') return DOORSTEP_PITCH_SYSTEM;
   if (purpose === 'contrast_message') return CONTRAST_SYSTEM;
   if (purpose === 'rebuttal') return REBUTTAL_SYSTEM;
@@ -852,6 +930,26 @@ function buildPrompt(b: Body): string {
     return `Call/text campaign brief (JSON):\n${b.context}\n\nDraft the phone bank / P2P texting script.`;
   }
 
+  if (b.purpose === 'volunteer_pipeline') {
+    return `Volunteer and their real situation (JSON):\n${b.context}\n\nDraft the outreach message.`;
+  }
+
+  if (b.purpose === 'gotv_sprint_plan') {
+    return `Days remaining, ballot-chase status, and volunteer capacity (JSON):\n${b.context}\n\nBuild the day-by-day GOTV plan.`;
+  }
+
+  if (b.purpose === 'mistake_response') {
+    return `What happened, exactly as staff described it (JSON):\n${b.context}\n\nDraft the honest accountability response.`;
+  }
+
+  if (b.purpose === 'interview_prep') {
+    return `Interview format and likely topics (JSON):\n${b.context}\n\nBuild the interview prep sheet.`;
+  }
+
+  if (b.purpose === 'endorsement_ask') {
+    return `Organization/leader and the real reason for the fit (JSON):\n${b.context}\n\nDraft the endorsement request.`;
+  }
+
   const lines: string[] = [];
   if (b.purpose === 'broadcast') {
     lines.push('Draft an internal campaign broadcast to the field/volunteer team.');
@@ -936,7 +1034,12 @@ Deno.serve(async (req) => {
     body.purpose === 'recurring_upgrade' ||
     body.purpose === 'ltv_forecast' ||
     body.purpose === 'donor_dedup' ||
-    body.purpose === 'refund_risk_scan'
+    body.purpose === 'refund_risk_scan' ||
+    body.purpose === 'volunteer_pipeline' ||
+    body.purpose === 'gotv_sprint_plan' ||
+    body.purpose === 'mistake_response' ||
+    body.purpose === 'interview_prep' ||
+    body.purpose === 'endorsement_ask'
   ) {
     if (!body.context?.trim()) return json({ error: 'context is required' }, 400);
   } else if (!body.instructions?.trim()) {

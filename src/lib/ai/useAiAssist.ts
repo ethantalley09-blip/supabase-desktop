@@ -44,7 +44,12 @@ export type AiPurpose =
   | 'press_release'
   | 'media_pitch'
   | 'direct_mail'
-  | 'phone_script';
+  | 'phone_script'
+  | 'volunteer_pipeline'
+  | 'gotv_sprint_plan'
+  | 'mistake_response'
+  | 'interview_prep'
+  | 'endorsement_ask';
 
 export type AiAssistInput = {
   orgId: string;

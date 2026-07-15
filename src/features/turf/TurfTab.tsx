@@ -11,7 +11,9 @@ import { supabase } from '@/lib/supabase/client';
 import { BallotChase } from './BallotChase';
 import { DoorstepDonations } from './DoorstepDonations';
 import { GeocodeAdvanced } from './GeocodeAdvanced';
+import { GotvSprintPlan } from './GotvSprintPlan';
 import { TurfInsights } from './TurfInsights';
+import { VolunteerPipeline } from './VolunteerPipeline';
 import {
   isKnockable,
   optimizeWalkOrder,
@@ -449,6 +451,17 @@ export function TurfTab({ project }: { project: Project }) {
           />
         </div>
       </div>
+
+      {canUseAi.data && (
+        <div id="tool-volunteer_pipeline">
+          <VolunteerPipeline orgId={project.org_id} projectId={project.id} />
+        </div>
+      )}
+      {canUseAi.data && (
+        <div id="tool-gotv_sprint_plan">
+          <GotvSprintPlan orgId={project.org_id} projectId={project.id} voters={voters ?? []} />
+        </div>
+      )}
 
       <div className="inline-flex gap-1 rounded-lg bg-neutral-100 p-1">
         <button

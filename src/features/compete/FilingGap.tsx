@@ -1,13 +1,15 @@
-import { Scale } from 'lucide-react';
+import { Scale, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useDonationTotal } from '@/features/fundraising/useFundraising';
+import { useQuickInsight } from '@/lib/ai/useQuickInsight';
 import { computeMoneyGap } from './competeMath';
 
 // Public filing comparison: opponent totals are PUBLIC RECORD (fec.gov or
 // the state portal) — staff type the number in, we compare against our real
-// raised total. Pure math, works with zero AI setup.
-export function FilingGap({ projectId }: { projectId: string }) {
+// raised total. Pure math, works with zero AI setup; an optional one-line
+// strategic read layers on top once ai_module is on.
+export function FilingGap({ orgId, projectId, aiEnabled }: { orgId?: string; projectId: string; aiEnabled?: boolean }) {
   const { data: ourTotalCents } = useDonationTotal(projectId);
   const [theirs, setTheirs] = useState('');
   const [ourOverride, setOurOverride] = useState('');
@@ -17,6 +19,14 @@ export function FilingGap({ projectId }: { projectId: string }) {
     () => (Number(theirs) > 0 || ours > 0 ? computeMoneyGap(ours, Math.round(Number(theirs || 0) * 100)) : null),
     [ours, theirs]
   );
+
+  const read = useQuickInsight({
+    orgId,
+    projectId,
+    framing: 'Our fundraising total vs. the opponent\'s public filing total — strategic, competitive tone',
+    data: gap,
+    enabled: Boolean(aiEnabled) && gap !== null && theirs !== ''
+  });
 
   const fmt = (c: number) => `$${Math.round(c / 100).toLocaleString()}`;
 
@@ -71,6 +81,12 @@ export function FilingGap({ projectId }: { projectId: string }) {
                 <> Try Funding Runway and the Emergency Ask on the Fundraising tab to close it.</>
               )}
             </>
+          )}
+          {read.data && (
+            <p className="mt-2 flex items-start gap-1.5 border-t border-current/20 pt-2 text-xs opacity-90">
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+              {read.data}
+            </p>
           )}
         </div>
       )}

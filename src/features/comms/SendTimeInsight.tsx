@@ -1,14 +1,37 @@
-import { Clock } from 'lucide-react';
+import { Clock, Sparkles } from 'lucide-react';
 import { useMemo } from 'react';
 import type { Donation } from '@/features/fundraising/useFundraising';
+import { useQuickInsight } from '@/lib/ai/useQuickInsight';
 import { computeSendTimeInsights } from './sendTime';
 
-// Send-Time Insight: no AI call, no waiting — instant math on the campaign's
-// OWN donation timestamps. Competitors sell generic "best time to email"
-// advice from industry averages; this is your actual supporters' behavior.
-export function SendTimeInsight({ donations }: { donations: Donation[] | undefined }) {
+// Send-Time Insight: no AI call for the number itself — instant math on the
+// campaign's OWN donation timestamps, which stays true even with AI layered
+// on top (see below). Competitors sell generic "best time to email" advice
+// from industry averages; this is your actual supporters' behavior.
+export function SendTimeInsight({
+  donations,
+  orgId,
+  projectId,
+  aiEnabled
+}: {
+  donations: Donation[] | undefined;
+  orgId?: string;
+  projectId?: string;
+  aiEnabled?: boolean;
+}) {
   const insight = useMemo(() => computeSendTimeInsights(donations ?? []), [donations]);
   const max = insight ? Math.max(...insight.hourlyCounts, 1) : 1;
+
+  // Passive enhancement: the exact best-hour/day above is already computed
+  // and rendered before this ever resolves. One extra sentence of practical
+  // framing, never a replacement for the math.
+  const tip = useQuickInsight({
+    orgId,
+    projectId,
+    framing: 'Best-time-to-send scheduling insight for a political campaign — practical, actionable tone',
+    data: insight,
+    enabled: Boolean(aiEnabled && insight)
+  });
 
   return (
     <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
@@ -47,6 +70,12 @@ export function SendTimeInsight({ donations }: { donations: Donation[] | undefin
             <span>12 PM</span>
             <span>11 PM</span>
           </div>
+          {tip.data && (
+            <p className="flex items-start gap-1.5 border-t border-neutral-100 pt-2 text-xs text-violet-700">
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+              {tip.data}
+            </p>
+          )}
         </>
       )}
     </div>

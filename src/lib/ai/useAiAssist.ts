@@ -49,7 +49,8 @@ export type AiPurpose =
   | 'gotv_sprint_plan'
   | 'mistake_response'
   | 'interview_prep'
-  | 'endorsement_ask';
+  | 'endorsement_ask'
+  | 'quick_insight';
 
 export type AiAssistInput = {
   orgId: string;

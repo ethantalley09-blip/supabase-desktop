@@ -63,7 +63,8 @@ type Purpose =
   | 'gotv_sprint_plan'
   | 'mistake_response'
   | 'interview_prep'
-  | 'endorsement_ask';
+  | 'endorsement_ask'
+  | 'quick_insight';
 
 type Body = {
   orgId: string;
@@ -711,6 +712,25 @@ Rules:
 - No flattery not grounded in what's provided, no fabricated shared priorities.
 - Return JSON only.`;
 
+// quick_insight: a shared, lightweight purpose for surfaces that already
+// compute an exact number/ranking with pure math (Send-Time Insight, the
+// Doorstep leaderboard, Filing Gap, the Overview briefing) and want ONE
+// sentence of real commentary layered on top -- never a replacement for the
+// math, which stays instant and exact. One purpose, many framings, so this
+// doesn't sprawl into a near-duplicate system prompt per surface.
+const QUICK_INSIGHT_SYSTEM = `You add ONE short, sharp sentence of real commentary next to an already-computed number or ranking. You never recompute, restate, or contradict the number itself -- it's already shown on screen next to your sentence.
+
+You are given: a "framing" (what this surface is and what tone fits) and the exact data (JSON) behind the number already displayed.
+
+Return ONLY a JSON object: {"insight":"..."}
+
+Rules:
+- insight: ONE sentence, under 25 words. Add the "so what" or the "what's next" -- never just restate the number.
+- Ground it ONLY in the data provided -- never invent a comparison, trend, name, or fact not in the JSON.
+- Match tone to the framing given (celebratory for a leaderboard, practical for scheduling, strategic for a competitive money comparison, briefing-style for an executive summary).
+- If the data is too thin to say anything real and specific, return {"insight":""} rather than generic filler.
+- Return JSON only.`;
+
 function systemFor(purpose: Purpose): string {
   if (purpose === 'email_campaign') return EMAIL_CAMPAIGN_SYSTEM;
   if (purpose === 'press_release') return PRESS_RELEASE_SYSTEM;
@@ -722,6 +742,7 @@ function systemFor(purpose: Purpose): string {
   if (purpose === 'mistake_response') return MISTAKE_RESPONSE_SYSTEM;
   if (purpose === 'interview_prep') return INTERVIEW_PREP_SYSTEM;
   if (purpose === 'endorsement_ask') return ENDORSEMENT_ASK_SYSTEM;
+  if (purpose === 'quick_insight') return QUICK_INSIGHT_SYSTEM;
   if (purpose === 'doorstep_pitch') return DOORSTEP_PITCH_SYSTEM;
   if (purpose === 'contrast_message') return CONTRAST_SYSTEM;
   if (purpose === 'rebuttal') return REBUTTAL_SYSTEM;
@@ -950,6 +971,10 @@ function buildPrompt(b: Body): string {
     return `Organization/leader and the real reason for the fit (JSON):\n${b.context}\n\nDraft the endorsement request.`;
   }
 
+  if (b.purpose === 'quick_insight') {
+    return `Framing and exact data already shown on screen (JSON):\n${b.context}\n\nAdd the one-sentence insight.`;
+  }
+
   const lines: string[] = [];
   if (b.purpose === 'broadcast') {
     lines.push('Draft an internal campaign broadcast to the field/volunteer team.');
@@ -1039,7 +1064,8 @@ Deno.serve(async (req) => {
     body.purpose === 'gotv_sprint_plan' ||
     body.purpose === 'mistake_response' ||
     body.purpose === 'interview_prep' ||
-    body.purpose === 'endorsement_ask'
+    body.purpose === 'endorsement_ask' ||
+    body.purpose === 'quick_insight'
   ) {
     if (!body.context?.trim()) return json({ error: 'context is required' }, 400);
   } else if (!body.instructions?.trim()) {

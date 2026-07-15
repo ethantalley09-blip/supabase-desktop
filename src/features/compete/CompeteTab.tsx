@@ -47,9 +47,10 @@ export function CompeteTab({ project }: { project: Project }) {
         <OpponentLog orgId={project.org_id} projectId={project.id} records={records} />
       </div>
 
-      {/* Works with zero AI setup: public filing comparison, pure math */}
+      {/* Works with zero AI setup: public filing comparison, pure math.
+          An optional one-line strategic read layers on top once ai_module is on. */}
       <div id="tool-filing_gap">
-        <FilingGap projectId={project.id} />
+        <FilingGap orgId={project.org_id} projectId={project.id} aiEnabled={showAi} />
       </div>
 
       {showAi ? (

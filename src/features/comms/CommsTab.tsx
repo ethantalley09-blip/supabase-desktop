@@ -78,9 +78,15 @@ export function CommsTab({ project }: { project: Project }) {
         <div className="space-y-4">
           <SocialSchedulerPanel project={project} />
 
-          {/* Send-time insight is pure math — always instant, no AI wait */}
+          {/* Send-time insight is pure math — always instant, no AI wait.
+              An optional one-line AI tip layers on top once ai_module is on. */}
           <div id="tool-send_time_insight">
-            <SendTimeInsight donations={donations} />
+            <SendTimeInsight
+              donations={donations}
+              orgId={project.org_id}
+              projectId={project.id}
+              aiEnabled={showAi}
+            />
           </div>
 
           {showAi ? (

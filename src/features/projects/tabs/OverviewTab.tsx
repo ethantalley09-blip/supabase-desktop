@@ -1,14 +1,17 @@
 import { format } from 'date-fns';
-import { ArrowRight, Clock, Globe, Newspaper, TrendingDown, TrendingUp, Trophy, Wallet } from 'lucide-react';
+import { ArrowRight, Clock, Globe, Newspaper, Sparkles, TrendingDown, TrendingUp, Trophy, Wallet } from 'lucide-react';
 import { type ReactNode, useMemo } from 'react';
 import { computeSendTimeInsights } from '@/features/comms/sendTime';
 import { useOpponentRecords } from '@/features/compete/useCompete';
 import { useDonations, useDonationTotal } from '@/features/fundraising/useFundraising';
 import { scoreLapse, warmSegment } from '@/features/fundraising/runway';
 import { useLatestRunwayPlan } from '@/features/fundraising/useGrowthAi';
+import { useHasPermission } from '@/features/rbac/useHasPermission';
 import type { ToolLocation } from '@/features/rbac/toolRegistry';
 import { canvasserLeaderboard, scoreDoors } from '@/features/turf/doorstep';
 import { useVoterRecords } from '@/features/turf/useTurf';
+import { useEntitlement } from '@/lib/entitlements/entitlements';
+import { useQuickInsight } from '@/lib/ai/useQuickInsight';
 import type { Project } from '../useProjects';
 import { computeLanguageCoverage, computeMomentum, dailySeries, pct, sparklinePoints } from './overviewMath';
 
@@ -29,6 +32,9 @@ export function OverviewTab({
   const { data: totalCents } = useDonationTotal(project.id);
   const { data: runwayPlan } = useLatestRunwayPlan(project.id);
   const { data: opponentRecords } = useOpponentRecords(project.id);
+  const aiEnt = useEntitlement(project.org_id, 'ai_module');
+  const canUseAi = useHasPermission(project.org_id, 'ai.use');
+  const showAi = Boolean(aiEnt.data && canUseAi.data);
 
   const stats = useMemo(() => {
     const v = voters ?? [];
@@ -77,8 +83,43 @@ export function OverviewTab({
   ];
   const actions = allActions.filter((a) => a.count > 0);
 
+  // Today's Briefing: every number below is exact, instant client-side math
+  // (unchanged) — this is ONE optional sentence synthesizing them into a
+  // single executive read, not a replacement for any of it. Fires once,
+  // not per-card, so it stays fast even with AI layered on.
+  const briefing = useQuickInsight({
+    orgId: project.org_id,
+    projectId: project.id,
+    framing: 'Executive daily briefing for a campaign manager synthesizing several real signals into ONE actionable read',
+    data: {
+      raised_total_cents: totalCents ?? 0,
+      raised_last_30_days_cents: stats.raised30,
+      momentum: stats.momentum,
+      warm_doors_ready: stats.warmDoors,
+      donors_lapsing: stats.lapsing,
+      warm_donors_for_ask: stats.warm,
+      ballots_requested: stats.requested,
+      ballots_returned: stats.returned,
+      opposition_records_logged: opponentRecords?.length ?? 0,
+      runway_shortfall_date: runwayPlan?.shortfall_date ?? null
+    },
+    enabled: showAi && stats.v.length + (donations?.length ?? 0) > 0
+  });
+
   return (
     <div className="space-y-4">
+      {/* Today's Briefing: one AI sentence on top of the exact numbers below,
+          never a replacement for them. Silently absent if it fails or the
+          AI module is off — the rest of the tab works identically either way. */}
+      {briefing.data && (
+        <div className="flex items-start gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+          <p className="text-sm text-violet-900">
+            <span className="font-semibold">Today's briefing:</span> {briefing.data}
+          </p>
+        </div>
+      )}
+
       {/* Key numbers */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Raised" value={`$${Math.round((totalCents ?? 0) / 100).toLocaleString()}`} />

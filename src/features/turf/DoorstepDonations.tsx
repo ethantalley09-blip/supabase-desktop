@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useDonations } from '@/features/fundraising/useFundraising';
 import { extractJson } from '@/lib/ai/extractJson';
 import { useAiAssist } from '@/lib/ai/useAiAssist';
+import { useQuickInsight } from '@/lib/ai/useQuickInsight';
 import { canvasserLeaderboard, scoreDoors, type WarmDoor } from './doorstep';
 import type { VoterRecord } from './useTurf';
 
@@ -33,6 +34,16 @@ export function DoorstepDonations({
 
   const warmDoors = useMemo(() => scoreDoors(voters), [voters]);
   const leaderboard = useMemo(() => canvasserLeaderboard(donations ?? []).slice(0, 5), [donations]);
+
+  // Passive enhancement: the ranking above is exact and already rendered.
+  // One celebratory sentence layered on top, never a replacement.
+  const shoutout = useQuickInsight({
+    orgId,
+    projectId,
+    framing: 'Canvasser doorstep-fundraising leaderboard — upbeat, celebratory shoutout tone',
+    data: leaderboard,
+    enabled: canUseAi && leaderboard.length > 0
+  });
 
   const getPitch = (d: WarmDoor) => {
     setPitchFor(d.voterId);
@@ -133,6 +144,12 @@ export function DoorstepDonations({
               </div>
             ))}
           </div>
+          {shoutout.data && (
+            <p className="mt-2 flex items-start gap-1.5 border-t border-neutral-100 pt-2 text-xs text-violet-700">
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+              {shoutout.data}
+            </p>
+          )}
         </div>
       )}
     </div>

@@ -272,6 +272,20 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   press prep, the non-adversarial counterpart to Debate Prep), and
   endorsement_ask (`comms/EndorsementAskBuilder.tsx` — a personalized ask to
   a named organization/leader, distinct from donor asks and media pitches).
+  **quick_insight** (`src/lib/ai/useQuickInsight.ts`, 49th purpose): a
+  shared, lightweight purpose for surfaces that already compute an exact
+  number/ranking with pure math and want ONE sentence of real commentary
+  layered on top — never a replacement. `useQuery` (not `useMutation`, fires
+  automatically once real data exists), `retry: false`, and no error surfaced
+  to the user if it fails silently — this is decoration on an already-working
+  number, not a primary tool, so a failure must never break or even visibly
+  degrade the surface it's attached to. Wired into Send-Time Insight
+  (practical scheduling tip), the Doorstep leaderboard (celebratory
+  shoutout), Filing Gap (strategic read on the money comparison), and a new
+  Overview "Today's Briefing" banner (ONE call synthesizing several MiniCard
+  signals into an executive read, not one call per card — keeps it fast).
+  Deliberately NOT wired into Compliance — invariant #6 keeps that domain
+  AI-free for legal-risk reasons, a hard line, not a style choice.
 - **Data-driven purposes send only aggregate snapshots, never raw rows.**
   `data_qa`/`field_coach` use `buildTurfSnapshot` (`turf/route.ts`) and
   `buildFundraisingSnapshot` (`fundraising/fundraisingSnapshot.ts`);

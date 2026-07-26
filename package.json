@@ -14,7 +14,8 @@
     "db:reset": "npx -y supabase@latest db reset",
     "db:migrate": "npx -y supabase@latest migration up",
     "db:types": "npx -y supabase@latest gen types typescript --local",
-    "seed": "powershell -ExecutionPolicy Bypass -File scripts/seed-dev.ps1"
+    "seed": "powershell -ExecutionPolicy Bypass -File scripts/seed-dev.ps1",
+    "test:rls": "npx -y supabase@latest test db --local"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -46,12 +47,16 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.2",
     "@tauri-apps/cli": "^1.5.6",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^26.1.0",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",
     "@vitejs/plugin-react": "^6.0.3",
     "eslint-config-prettier": "^8.5.0",
+    "jsdom": "^29.1.1",
     "prettier": "2.8.1",
     "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3",

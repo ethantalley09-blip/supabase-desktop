@@ -64,6 +64,20 @@ operational contract: follow it exactly.
   `npm run build`, then exercise the change in the browser (dev server on
   :1420 via `npm run dev`). Direct SQL for assertions:
   `docker exec supabase_db_Lynx_Stuff psql -U postgres -d postgres -c "..."`
+- **RLS policy tests**: `npm run test:rls` (pgTAP via `supabase test db
+  --local`, needs local Docker Supabase running — NOT part of `npm test`,
+  which stays Docker-free). Coverage so far: `supabase/tests/
+  canvass_visits_rls_test.sql` and `turf_briefing_preferences_rls_test.sql`.
+  Each file is self-contained (creates its own auth.users/profiles/org/
+  project fixtures, wrapped in `BEGIN`/`ROLLBACK`) rather than depending on
+  `scripts/seed-dev.ps1`'s data, whose org/project ids are random and wiped
+  on every `db:reset`. Pattern for a new one: `npx -y supabase@latest test
+  new <name>_rls --template pgtap`, then simulate a user with `set local
+  role authenticated;` + `select set_config('request.jwt.claims',
+  json_build_object('sub', '<uuid>', 'role','authenticated')::text, true);`
+  before each assertion. Every other RLS-protected table still has no pgTAP
+  coverage (docs/TODO.md #8) — this only closes the gap for the two tables
+  this session touched.
 - Test users (after seed): carol@example.com (Owner), finn@example.com
   (Canvasser), admin@lynx.app (SuperAdmin → /admin). All `password123`.
 - Native shell check: `cargo build` in `src-tauri/` (slow first time; run
@@ -286,6 +300,262 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   signals into an executive read, not one call per card — keeps it fast).
   Deliberately NOT wired into Compliance — invariant #6 keeps that domain
   AI-free for legal-risk reasons, a hard line, not a style choice.
+  **Turf Briefing** (`turf/TurfBriefing.tsx`, migrations `0029_turf_briefing.sql`
+  / `0030_canvass_visits.sql` / `0031_turf_preferences.sql`): a real-time
+  canvassing-intelligence section of the Turf tab, built in four rounds.
+  Round 1 — foundation: a live shift heatmap (density/persuadability/
+  fundraising-signal/staleness) on the existing MapLibre map, party/
+  persuadability pin-color modes inferred from real voter-file columns and
+  canvasser notes (never fabricated), a live stat bar, one-click route
+  rebalancing, and the first purpose (`turf_briefing`, a grounded pre-shift
+  captain briefing). Round 2 — `canvass_visits` (0030) turns every real door
+  contact into an immutable historical row instead of an overwrite,
+  unlocking Best Time to Knock (real contact-success rate by hour,
+  `visitHistory.ts`), Persuasion Drift Alerts (flags a door whose lean
+  changed between real visits), Household Rollup (`households.ts` — voters
+  at the identical address collapse into one physical door so a route never
+  double-knocks), a Daylight-Aware Shift Clock (`daylight.ts`, zero-
+  dependency sunrise/sunset math), and the Live Objection Assistant
+  (`door_objection_assist` — real-time at-the-door AI coaching). Round 3 —
+  full per-user customization via `turf_briefing_preferences` (0031, same
+  RLS pattern as `dashboard_layouts`) backing a Customize panel where every
+  threshold is adjustable and persists, `quick_insight` layered onto the
+  newly-pure-math stats, and 5 more purposes: Door Script Personalizer
+  (`door_script_personalize`), Why This Door (`door_explainer`), Door
+  Language & Cultural Prep (`door_language_prep`), Shift Debrief
+  (`shift_debrief`, the retrospective twin of `turf_briefing`), and
+  Territory Difficulty Briefing (`territory_difficulty_briefing`,
+  `territoryDifficulty.ts`'s per-territory contact/opposition/dead-door
+  rates narrated into staffing advice). Round 4 — canvasser coordination,
+  reusing `canvass_visits.canvasser_id` (present since 0030 but not
+  previously surfaced): a Canvasser Leaderboard (`canvasserStats.ts`, real
+  doors-attempted/contacted per canvasser, `quick_insight` for a celebratory
+  shoutout), a Cross-Canvasser Overlap Guard (`overlapGuard.ts` — flags a
+  household two different canvassers actually visited within a lookback
+  window; informational, never blocks a route), a Revisit Queue
+  (`revisitQueue.ts` — doors with real repeated no-answer attempts and no
+  contact yet, ranked by attempt count), and `revisit_strategy` (an honest
+  verdict + one practical suggestion for the single most-attempted door —
+  genuinely allowed to say a door may not be worth another try). All Turf
+  Briefing purposes sit under one `turf_briefing` tool-registry entry
+  (`toolRegistry.ts`), gated on `turf.view`.
+  **Fundraising Intelligence** (5 purposes, migration `0032_donation_
+  voter_link.sql`): the revenue layer grafted directly onto Turf Briefing's
+  existing signals, unlocked by one structural addition — `donations.
+  voter_id` (nullable; null for every online/mail/event gift, which is
+  most of them), set only when a gift is recorded from a specific real
+  door via the new **Record gift** action in `turf/DoorstepDonations.tsx`
+  (extends the existing `useRecordDonation` hook with an optional
+  `voterId`). Without this link none of these five purposes would be
+  groundable, so build any future cross-domain feature idea on top of it
+  rather than approximating a donor-to-voter match. `momentum_ask_script`
+  (`momentumAsk.ts` — cross-references Persuasion Drift's real "warmed up"
+  alerts against linked gifts to find a door that just turned persuadable
+  and has never been asked, the exact narrow psychological window),
+  `household_cascade_ask` (`householdCascade.ts` — when one real household
+  member has given, per Household Rollup, the rest are a warm, not cold,
+  cross-sell; lives in `DoorstepDonations.tsx` next to Record Gift),
+  `peak_ask_briefing` (`peakAskWindow.ts` — real $-per-hour from linked
+  doorstep gifts ONLY, deliberately excluding online/mail gifts that don't
+  happen "at a door"; the revenue analog of Best Time to Knock, reuses its
+  `hourLabel` helper), `territory_roi_briefing`
+  (`territoryFundraisingRoi.ts` — real $ raised per real door knocked, by
+  territory; a revenue-per-effort ranking distinct from Territory
+  Difficulty Briefing's vote-contact ranking, same territory data, second
+  optimization axis), and `persistence_ask_script` (`persistenceAsk.ts` —
+  a door reached only after real repeated no-answer attempts is a distinct
+  reciprocity moment from a first-knock ask; distinct from
+  `revisit_strategy`, which is about whether to try again at all, not what
+  to say once you finally have). All five live in `TurfBriefing.tsx`
+  (except Household Cascade) directly beside the signal they extend, and
+  all read `useDonations` — RLS means a role without `fundraising.view`
+  simply sees nothing extra, no error, same pattern as everywhere else in
+  the app. **Fundraising Intelligence round 2** (5 more purposes, no new
+  migration): `golden_hour_ask_plan` (`goldenHourPush.ts` — once real
+  daylight is genuinely running low, per the Daylight-Aware Shift Clock,
+  the highest-$-potential warm doors still reachable outrank one more
+  unscored knock; an in-person ask takes longer than a knock-and-go
+  contact, so the closing window is spent asking, not knocking),
+  `ask_coverage_alert` (`askCoverageGap.ts` — cross-references the
+  Cross-Canvasser Overlap Guard with warm-door scoring: a household
+  multiple real canvassers have genuinely visited but that NO ONE has
+  actually asked is a coordination failure, not a data gap — everyone
+  assumed someone else would ask), `canvasser_ask_coaching`
+  (`canvasserAskCoach.ts` — cross-references the door-knocking Canvasser
+  Leaderboard with the doorstep $ leaderboard by profile id, since a
+  canvasser and a donation recorder are the same person; surfaces who's
+  great at doors but rarely asks, ranked lowest-ask-rate-first so the
+  canvasser who most needs coaching leads, gated on a 3-contact minimum so
+  one lucky/unlucky conversation can't skew it), `election_countdown_ask`
+  (`electionCountdownAsk.ts` — the fundraising analog of the GOTV
+  Countdown Planner; a real staff-entered election date drives urgency on
+  warm doors that have never given, mirroring `GotvSprintPlan.tsx`'s own
+  date-input convention so the two countdowns can never silently
+  disagree), and `doorstep_recurring_ask` (`doorstepRecurringUpgrade.ts`
+  — a real doorstep-linked donor, per `donations.voter_id`, whose most
+  recent logged visit shows a genuinely supportive lean is a candidate for
+  a small monthly-recurring upgrade on a follow-up visit; distinct from
+  the general `recurring_upgrade` purpose, which is anniversary-timed with
+  no door context at all). All five live in `TurfBriefing.tsx` (Doorstep
+  Recurring Upgrade lives in `DoorstepDonations.tsx` next to Record Gift,
+  same as Household Cascade) and fold under the existing `turf_briefing`
+  tool-registry entry — no new registry wiring needed. **68 AI purposes
+  total** in the app now.
+  **Round 3** adds one turnout-focused capstone and two team-wellbeing
+  tools, all in `TurfBriefing.tsx` except the last: `priority_door_briefing`
+  (`priorityDoor.ts` — the turnout-focused analog of Golden Hour Push;
+  real persuadability + ballot status, the Revisit Queue, and the real
+  election countdown synthesized into one ranked "hit these doors next"
+  list, deliberately excluding fundraising warmth since that axis already
+  has its own dedicated tool), `canvasser_checkin_prompt`
+  (`canvasserFatigue.ts` — a real, honest split in one canvasser's own
+  contact rate between the first and second half of today's shift; framed
+  strictly as a supportive wellbeing nudge, never a performance write-up —
+  the system prompt is explicit it must never mention numbers or
+  comparisons to the canvasser), and the **Volunteer Cadence Detector**
+  (`canvasserCadence.ts`, wired into `VolunteerPipeline.tsx`) — that
+  component's own comment used to say no shift-tracking table existed, so
+  it was honestly input-driven; `canvass_visits` (0030) now has exactly
+  that history, so this auto-detects a real lapsing or newly-accelerating
+  canvasser from their own visit cadence and one-click-fills the existing
+  `volunteer_pipeline` purpose's free-text situation field with a real,
+  computed description — reusing that purpose rather than adding a new
+  one. **70 AI purposes total** in the app now.
+  **Round 4** adds a staffing-level and a safety-level tool, both in
+  `TurfBriefing.tsx`: `territory_staffing_briefing` (`territoryStaffing.ts`
+  — cross-references real remaining-door load per territory against how
+  many distinct real canvassers have actually worked it in the last 7 days
+  to catch a territory quietly going unworked while another sits
+  over-staffed; a zero-canvasser territory's doors-per-canvasser ratio
+  equals its raw remaining count rather than dividing by zero, so it always
+  reads as maximally understaffed; only ever suggests pulling FROM a
+  territory with a real canvasser to spare, and only above a 3x workload
+  ratio so it's never noise between two similar loads — distinct from
+  `territory_difficulty_briefing`'s vote-contact difficulty ranking and
+  `territory_roi_briefing`'s revenue-per-door ranking, a third,
+  staffing-balance axis on the same territory data) and
+  `canvasser_silence_checkin` (`canvasserSilence.ts` — flags a canvasser
+  who had a real established presence earlier today, defined as at least 2
+  real visits, but has logged nothing for 90+ minutes since; distinct from
+  `canvasser_checkin_prompt`'s declining-RATE-while-still-active signal,
+  this is a total-silence safety/coordination check, framed as casual and
+  never accusatory since the data can't say why someone went quiet).
+  **72 AI purposes total** in the app now.
+  **Round 5** (owner directive: help canvassers close more donations, three
+  new tools, all in `TurfBriefing.tsx`): `neighborhood_proof_ask`
+  (`neighborhoodProof.ts` — real doorstep gifts, `donations.voter_id`,
+  grouped by street name reveal how many of a warm door's real neighbors
+  have already given; a genuine social-proof talking point woven into the
+  pitch, honest by construction — a door with zero real neighbor givers
+  gets no card at all rather than an honest-but-useless "0 neighbors" line,
+  and the system prompt forbids rounding the real count up or implying
+  "everyone" on the street gave), `donation_objection_handler`
+  (drafting-only, no pure-math module needed — same honestly-input-driven
+  pattern as `door_objection_assist`/`emergency_ask` since a canvasser
+  typing what a specific voter just said can't be precomputed; distinct
+  from `door_objection_assist`, which handles general political pushback,
+  this is specifically for a decline or stall on a DONATION ask, and
+  additionally returns an optional same-day text-to-give follow-up message
+  — populated only when the real objection was about payment method or
+  timing, left empty for a flat "not interested" so the tool never pushes
+  a follow-up on someone who said no), and `ask_rehearsal_prep`
+  (`askRehearsal.ts` — a confidence-building tool BEFORE a canvasser starts
+  asking, distinct from `canvasser_ask_coaching`, which coaches AFTER the
+  fact from real ask-rate stats; grounded in an aggregate-only snapshot of
+  today's real warm-door count and the most common real reasons they're
+  warm, never a specific voter, so the AI can anticipate genuinely likely
+  donor questions — e.g. where the money goes, is this legit — with
+  honest, confident answers a nervous canvasser can rehearse before
+  knocking). All three fold under the existing `turf_briefing` tool-
+  registry entry. **75 AI purposes total** in the app now.
+  **Round 6** (a deliberately different kind of upgrade — routing, referral
+  growth, and team psychology instead of another script-generator): the
+  **Money Route Optimizer** (`moneyRoute.ts`, an "Optimize for $" button
+  next to Rebalance Now) reorders today's remaining doors to walk all real
+  warm doors first via `optimizeWalkOrder`'s own nearest-neighbor + 2-opt
+  logic, then the rest — front-loading dollar potential instead of pure
+  geographic efficiency, with zero new AI purpose (pure math, like
+  Rebalance Now itself); the **Live Team Fundraising Goal Tracker**
+  (`teamGoalTracker.ts`) is a session-local dollar-goal input (same
+  lightweight, non-persisted pattern as the Election Countdown date field)
+  showing real progress from today's actual doorstep gifts plus an honest
+  pace-based sunset projection using real remaining daylight, decorated
+  with `quick_insight`, not a new dedicated purpose — distinct from the
+  Overview tab's 15-day Momentum and Funding Runway, which operate on a
+  longer horizon; and `doorstep_referral_ask` (drafting-only, fires
+  automatically the instant `saveGift` in `DoorstepDonations.tsx` succeeds)
+  captures the psychological momentum of a fresh real "yes" to ask for a
+  referral to a neighbor or friend while it's warmest — distinct from
+  `network_ask` (an online donor-forwarded broadcast) and
+  `neighborhood_proof_ask` (social proof FROM others who already gave, not
+  a request for a NEW referral). **76 AI purposes total** in the app now.
+  **Major-donor round** (owner directive: campaigns raising real money at
+  scale live at the major-donor/bundler/event level, not just door-to-door
+  — three tools in `src/features/fundraising/`, none touching the
+  Compliance domain): the **Bundler Network Detector**
+  (`bundlerNetworkMath.ts` — file named with a `Math` suffix rather than
+  `bundlerNetwork.ts` for the same reason `turfBriefingMath.ts` is named
+  that way: this dev box's filesystem is case-insensitive and
+  `BundlerNetwork.tsx`, the component, would otherwise collide with it;
+  clusters real donors by real shared `donors.employer` who have ALL
+  actually given — a signal no pure payment processor can see since it
+  only ever looks at one transaction at a time — and surfaces the
+  cluster's own highest real giver as the one to ask to formally
+  cultivate their coworkers, via `bundler_cultivation_ask`), the
+  **High-Dollar Event Planner** (`eventPlanner.ts` +
+  `HighDollarEventPlanner.tsx` — ranks real prior donors by real lifetime
+  giving into an invite list, with each invitee's suggested ask anchored
+  to their own real largest gift to date, and computes an honest
+  realistic dollar RANGE rather than a promise; `event_planning_briefing`
+  gives a plain gap assessment if a staff-entered target exceeds that
+  range instead of pretending it doesn't), and the **Contribution Limit
+  Guardian** (`contributionLimitMath.ts` + `ContributionLimitGuardian.tsx`
+  — deliberately ZERO AI, same rule as the Compliance tab and for the
+  same legal-risk reason; a pure running-total tracker against a
+  STAFF-ENTERED dollar threshold, never a number this app asserts as the
+  actual legal limit, with the same "Not legal or FEC advice" amber
+  banner pattern as `ComplianceTab.tsx`; also flags informal employer
+  clusters near the threshold, explicitly caveated as not an authoritative
+  FEC affiliated-entity determination). **78 AI purposes total** in the
+  app now (Contribution Limit Guardian adds a registered tool but no new
+  AI purpose). **Per current owner directive, this is the last
+  Fundraising-tab round — new feature work goes into Turf Briefing and its
+  map only until told otherwise.**
+  **Map-Integrated AI round** (owner directive: make the map itself
+  interactive — before this round, clicking an individual voter pin did
+  nothing at all): the **Click-to-Ask Door Popup** (a new `voters-layer`
+  click handler in `TurfTab.tsx` sets `mapSelectedVoterId`, passed down to
+  `TurfBriefing.tsx`; Door Prep's `topDoor` now prefers a real map-clicked
+  voter over its own auto-picked top-priority door, with a "Clear map
+  selection" control — reuses the existing `door_script_personalize`/
+  `door_explainer` purposes unchanged, zero new AI purpose, just a new way
+  to reach them for ANY real door, not only the algorithm's pick), the
+  **Draw-an-Area AI Briefing** (a new "Ask about area" mode reuses the
+  same click-to-add-vertex mechanics as "Draw territory" — `drawing:
+  boolean` refactored to `drawMode: 'off' | 'territory' | 'ask'` — and on
+  finish runs `findVotersInRing` (`areaSelect.ts`, reusing
+  `@turf/turf`'s `booleanPointInPolygon`, the same primitive
+  `useCreateTerritory` already uses, just without persisting anything) to
+  find real voters inside a hand-drawn ad-hoc shape, then feeds the
+  existing `buildBriefingSnapshot` — scoped to just that subset — to a new
+  `map_area_briefing` purpose, distinct from `turf_briefing` (whole
+  filtered set) and `territory_difficulty_briefing` (named, saved
+  territories only) since this is any shape drawn by eye, never saved),
+  and the **Live Hotspot Caller** (`hotspot.ts`, new pure-math grid-binning
+  module reusing `turfBriefingMath.ts`'s own `heatmapWeight` directly so
+  its words always agree with what the heatmap actually shows; finds the
+  single densest real ~300m cell for whichever heatmap mode is active and
+  names its real street addresses; `quick_insight`-decorated like Best
+  Time to Knock, not a new dedicated purpose). **79 AI purposes total** in
+  the app now.
+  **Filesystem gotcha, hit twice this session:** this dev box's filesystem
+  is case-insensitive — a pure-math file and its component cannot share a
+  name differing only in case (`bundlerNetwork.ts`/`BundlerNetwork.tsx`
+  and `contributionLimitGuardian.ts`/`ContributionLimitGuardian.tsx` both
+  broke `tsc` this way before being renamed). Always suffix the pure-math
+  file with `Math` (`turfBriefingMath.ts`, `bundlerNetworkMath.ts`,
+  `contributionLimitMath.ts`) whenever the natural name would otherwise
+  exactly match a component name.
 - **Data-driven purposes send only aggregate snapshots, never raw rows.**
   `data_qa`/`field_coach` use `buildTurfSnapshot` (`turf/route.ts`) and
   `buildFundraisingSnapshot` (`fundraising/fundraisingSnapshot.ts`);
@@ -306,11 +576,14 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   `src/features/turf/route.ts` (city/ward parsing, walk-order optimization,
   turf splitting) is unit-tested in `route.test.ts`; `useTurf.ts` re-exports
   it. Follow this split for new algorithmic code.
-- **Migrations are numbered; we're at `0028`.** Recent additions to
+- **Migrations are numbered; we're at `0032`.** Recent additions to
   `voter_records`: `contact_status` / `ballot_status` / `ballot_updated_at`
   (0017), `canvass_notes` (0018), `geocode_status` / `geocode_checked_at`
-  (0028). New entitlement key `ai_module` and permission `ai.use` are
-  documented in invariants #3 and #4.
+  (0028), `last_contacted_at` (0029). `canvass_visits`, an append-only visit
+  log (0030); `turf_briefing_preferences`, per-user settings (0031);
+  `donations.voter_id`, a nullable link back to the door a gift came from
+  (0032). New entitlement key `ai_module` and permission `ai.use` are documented in
+  invariants #3 and #4.
 - **Always finish with** `npm run typecheck && npm run test && npm run build`;
   after a migration also `npm run db:reset` then regen types (workflow above).
   Verify DB-level claims with the `psql` one-liner rather than assuming.

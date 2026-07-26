@@ -33,9 +33,15 @@ session can pick it up without extra context.
    endpoint (POST a CSV of up to 10k addresses) in an Edge Function.
 7. **Voter list dedupe/merge** on re-import (currently every import appends;
    `import_batches` gives provenance but nothing detects duplicates).
-8. **More tests.** vitest covers `dateRange.ts` and `parseFile.ts`
-   (`npm test`). Still worth adding: RLS/policy tests (pgTAP or a REST
-   harness reusing `scripts/seed-dev.ps1` patterns) and component tests.
+8. **More tests.** vitest now covers ~40 pure-logic modules plus one
+   component test (`TurfBriefing.test.tsx`, jsdom + Testing Library, wired
+   in `vite.config.ts`'s `test` block — `npm test`). RLS/policy tests exist
+   for `canvass_visits` and `turf_briefing_preferences` only
+   (`supabase/tests/*_rls_test.sql`, pgTAP, run via `npm run test:rls` —
+   needs local Docker Supabase running, self-contained fixtures, never
+   touches real data since each file is one rolled-back transaction). Still
+   worth adding: pgTAP coverage for every other RLS-protected table, and
+   component tests beyond TurfBriefing.
 9. **Realtime comms.** Unread badge polls every 60s; Supabase Realtime
    subscriptions on `messages` would make broadcasts live, and a header
    notification indicator would surface them outside the Comms tab.

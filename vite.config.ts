@@ -1,4 +1,7 @@
-import { defineConfig } from 'vite';
+// defineConfig comes from 'vitest/config' (a superset of Vite's own) so the
+// `test` block below type-checks — it has no effect on `vite dev`/`vite build`
+// or the Tauri toolchain, which only read the Vite-shaped fields.
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
@@ -10,6 +13,13 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src')
     }
+  },
+
+  test: {
+    // jsdom is a superset of what the existing pure-logic tests need, so this
+    // is safe for the whole suite, not just the new component tests.
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts']
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

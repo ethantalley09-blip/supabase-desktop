@@ -1,10 +1,12 @@
-import { HeartHandshake, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { HeartHandshake, Sparkles, Zap } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOrgMembersForBridge } from '@/features/fundraising/useFundraisingAi';
 import { extractJson } from '@/lib/ai/extractJson';
 import { useAiAssist } from '@/lib/ai/useAiAssist';
 import { useMutation } from '@tanstack/react-query';
+import { detectCanvasserCadence } from './canvasserCadence';
+import { useCanvassVisits } from './useTurf';
 
 type VolunteerPipelinePack = { message: string; suggested_next_step: string };
 
@@ -28,15 +30,26 @@ function useVolunteerPipeline() {
 // Volunteer Recruitment & Retention: donors get churn_prediction and a win-back
 // sequence, volunteers get nothing today. Same idea, different roster —
 // staff describe a real lapse or a real moment of readiness, the AI drafts
-// the re-engagement or promotion ask. No shift-tracking table exists yet, so
-// this is honestly input-driven (like emergency_ask) rather than pretending
-// to compute an engagement score from data the app doesn't have.
+// the re-engagement or promotion ask.
 export function VolunteerPipeline({ orgId, projectId }: { orgId: string; projectId: string }) {
   const { data: members } = useOrgMembersForBridge(orgId);
+  const { data: visits } = useCanvassVisits(projectId);
   const draft = useVolunteerPipeline();
   const [volunteerId, setVolunteerId] = useState('');
   const [situation, setSituation] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Volunteer Cadence Detector: canvass_visits (migration 0030) now has
+  // exactly the real per-canvasser shift history the comment above used to
+  // say didn't exist — auto-detect a lapsing or accelerating canvasser
+  // instead of requiring staff to notice and type the situation by hand.
+  // Reuses this same volunteer_pipeline purpose; no new AI purpose needed.
+  const cadenceSignals = useMemo(() => detectCanvasserCadence(visits ?? []), [visits]);
+
+  const useDetected = (signal: (typeof cadenceSignals)[number]) => {
+    setVolunteerId(signal.canvasserId);
+    setSituation(signal.situation);
+  };
 
   const volunteerName = members?.find((m) => m.profile_id === volunteerId)?.full_name ?? '';
 
@@ -62,6 +75,25 @@ export function VolunteerPipeline({ orgId, projectId }: { orgId: string; project
         A lapsed volunteer, or one ready for more? Describe the real situation and get a warm
         re-engagement or promotion message — never a guilt trip.
       </p>
+
+      {cadenceSignals.length > 0 && (
+        <div className="space-y-1 rounded-md border border-rose-100 bg-rose-50/50 p-2">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-700">
+            <Zap className="h-3.5 w-3.5" />
+            Detected from real shift history
+          </p>
+          {cadenceSignals.map((s) => (
+            <div key={s.canvasserId} className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-neutral-700">
+                {s.name} — {s.pattern === 'lapsing' ? 'may be lapsing' : 'may be ready for more'}
+              </span>
+              <Button size="sm" variant="outline" onClick={() => useDetected(s)}>
+                Use this
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <select

@@ -96,7 +96,7 @@ export function BallotChase({
 
   const saveNote = (voter: VoterRecord, next: string) => {
     if (next === (voter.canvass_notes ?? '')) return; // unchanged — skip the write
-    updateNotes.mutate({ voterId: voter.id, projectId, notes: next });
+    updateNotes.mutate({ voterId: voter.id, projectId, notes: next, current: voter });
   };
 
   return (
@@ -167,7 +167,8 @@ export function BallotChase({
                         updateStatus.mutate({
                           voterId: v.id,
                           projectId,
-                          contact_status: e.target.value as ContactStatus
+                          contact_status: e.target.value as ContactStatus,
+                          current: v
                         })
                       }
                     >
@@ -193,7 +194,8 @@ export function BallotChase({
                         updateStatus.mutate({
                           voterId: v.id,
                           projectId,
-                          ballot_status: e.target.value as BallotStatus
+                          ballot_status: e.target.value as BallotStatus,
+                          current: v
                         })
                       }
                     >

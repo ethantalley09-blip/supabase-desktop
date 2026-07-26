@@ -3,6 +3,9 @@ import { area, booleanPointInPolygon, convex, featureCollection, point, polygon 
 import { supabase } from '@/lib/supabase/client';
 import type { Json } from '@/lib/supabase/types';
 import { useAuth } from '@/providers/AuthProvider';
+import { classifyPersuadability } from './turfBriefingMath';
+import { mergePreferences, type TurfPreferences } from './turfPreferences';
+import type { VisitForDrift, VisitLike, VisitOutcome } from './visitHistory';
 
 export type Territory = {
   id: string;
@@ -25,6 +28,51 @@ export function isKnockable(v: VoterRecord): boolean {
   return v.contact_status === KNOCKABLE_STATUS;
 }
 
+const DEAD_CONTACT_STATUSES: ContactStatus[] = ['moved', 'bad_address', 'deceased', 'do_not_contact'];
+
+// Derives a canvass_visits.outcome from real, already-captured fields —
+// never a separately user-chosen value (migration 0030's comment explains
+// why: it keeps the Best Time to Knock insight honest about what it's
+// actually measuring).
+function deriveOutcome(contactStatus: ContactStatus, notes: string | null): VisitOutcome {
+  if (DEAD_CONTACT_STATUSES.includes(contactStatus)) return 'dead_door';
+  if (notes?.trim()) return 'contacted';
+  return 'no_answer';
+}
+
+// Records one immutable row in canvass_visits (migration 0030) for a real
+// door contact — never for a ballot-only update, which can come from
+// non-door sources. Best-effort: a visit-log failure shouldn't block the
+// status/notes update that already succeeded, so errors are swallowed here
+// (the write to voter_records itself, which IS the source of truth for
+// current state, already threw on failure before this runs).
+async function logVisit(input: {
+  voterId: string;
+  projectId: string;
+  contactStatus: ContactStatus;
+  ballotStatus: BallotStatus;
+  notes: string | null;
+}) {
+  const { bucket } = classifyPersuadability({
+    contact_status: input.contactStatus,
+    ballot_status: input.ballotStatus,
+    canvass_notes: input.notes
+  });
+  try {
+    await supabase.from('canvass_visits').insert({
+      voter_id: input.voterId,
+      project_id: input.projectId,
+      contact_status: input.contactStatus,
+      ballot_status: input.ballotStatus,
+      notes_snapshot: input.notes,
+      persuadability_bucket: bucket,
+      outcome: deriveOutcome(input.contactStatus, input.notes)
+    });
+  } catch {
+    // Decoration on top of the real update — never surfaced to the user.
+  }
+}
+
 export type VoterRecord = {
   id: string;
   project_id: string;
@@ -40,6 +88,7 @@ export type VoterRecord = {
   canvass_notes: string | null;
   geocode_status: GeocodeStatus;
   geocode_checked_at: string | null;
+  last_contacted_at: string | null;
 };
 
 // City/ward extraction and walk-order optimization live in ./route (no
@@ -83,7 +132,7 @@ export function useVoterRecords(projectId: string | undefined) {
       const { data, error } = await supabase
         .from('voter_records')
         .select(
-          'id, project_id, data, full_name, address_line, lat, lng, territory_id, contact_status, ballot_status, ballot_updated_at, canvass_notes, geocode_status, geocode_checked_at'
+          'id, project_id, data, full_name, address_line, lat, lng, territory_id, contact_status, ballot_status, ballot_updated_at, canvass_notes, geocode_status, geocode_checked_at, last_contacted_at'
         )
         .eq('project_id', projectId!)
         .limit(5000);
@@ -244,7 +293,9 @@ export function useAssignTerritory() {
 // Update a voter's contact and/or ballot status. Enforced by the turf.manage
 // UPDATE policy on voter_records (RLS is the enforcement layer). Stamps
 // ballot_updated_at whenever the ballot status moves so the chase board can
-// show recency.
+// show recency, and last_contacted_at whenever contact_status changes — a
+// real door touch, not just a ballot-status change — so Turf Briefing's
+// staleness heatmap and shift stats reflect actual field activity.
 export function useUpdateVoterStatus() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -253,13 +304,21 @@ export function useUpdateVoterStatus() {
       projectId: string;
       contact_status?: ContactStatus;
       ballot_status?: BallotStatus;
+      // Pre-patch row, so a status-only update can still log a visit
+      // snapshot (persuadability needs canvass_notes, which this call may
+      // not be touching).
+      current: VoterRecord;
     }) => {
       const patch: {
         contact_status?: ContactStatus;
         ballot_status?: BallotStatus;
         ballot_updated_at?: string;
+        last_contacted_at?: string;
       } = {};
-      if (input.contact_status) patch.contact_status = input.contact_status;
+      if (input.contact_status) {
+        patch.contact_status = input.contact_status;
+        patch.last_contacted_at = new Date().toISOString();
+      }
       if (input.ballot_status) {
         patch.ballot_status = input.ballot_status;
         patch.ballot_updated_at = new Date().toISOString();
@@ -269,28 +328,150 @@ export function useUpdateVoterStatus() {
         .update(patch)
         .eq('id', input.voterId);
       if (error) throw error;
+
+      // A visit is only logged for a real door-contact signal
+      // (contact_status changing) — a ballot-only update can come from
+      // non-door sources like phone-bank ballot tracking.
+      if (input.contact_status) {
+        await logVisit({
+          voterId: input.voterId,
+          projectId: input.projectId,
+          contactStatus: input.contact_status,
+          ballotStatus: input.ballot_status ?? input.current.ballot_status,
+          notes: input.current.canvass_notes
+        });
+      }
     },
     onSuccess: (_r, vars) => {
       queryClient.invalidateQueries({ queryKey: ['voter-records', vars.projectId] });
+      queryClient.invalidateQueries({ queryKey: ['canvass-visits', vars.projectId] });
     }
   });
 }
 
 // Save a canvasser's free-text note from a door contact. Debounced by the
 // caller (BallotChase saves on blur, not on every keystroke) since this hits
-// the network on every call.
+// the network on every call. A saved note means a real door contact just
+// happened, so this stamps last_contacted_at too, and always logs a visit
+// (unlike a status-only update, a note is unambiguously a real conversation).
 export function useUpdateVoterNotes() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { voterId: string; projectId: string; notes: string }) => {
+    mutationFn: async (input: { voterId: string; projectId: string; notes: string; current: VoterRecord }) => {
+      const notes = input.notes || null;
       const { error } = await supabase
         .from('voter_records')
-        .update({ canvass_notes: input.notes || null })
+        .update({ canvass_notes: notes, last_contacted_at: new Date().toISOString() })
         .eq('id', input.voterId);
       if (error) throw error;
+
+      await logVisit({
+        voterId: input.voterId,
+        projectId: input.projectId,
+        contactStatus: input.current.contact_status,
+        ballotStatus: input.current.ballot_status,
+        notes
+      });
     },
     onSuccess: (_r, vars) => {
       queryClient.invalidateQueries({ queryKey: ['voter-records', vars.projectId] });
+      queryClient.invalidateQueries({ queryKey: ['canvass-visits', vars.projectId] });
     }
+  });
+}
+
+// All logged real door contacts for a project, joined with the voter's name
+// for display — feeds Best Time to Knock, Persuasion Drift Alerts, and (via
+// notes_snapshot) the "Why This Door" explainer in TurfBriefing.tsx. Also
+// joined with the canvasser's own name for the Canvasser Leaderboard and
+// Cross-Canvasser Overlap Guard (Round 4) — canvasser_id has been on
+// canvass_visits since migration 0030, this just surfaces it. Capped like
+// useVoterRecords; a shift's worth of visits is what matters, not the
+// entire campaign's history.
+export type CanvassVisit = VisitLike &
+  VisitForDrift & { notes_snapshot: string | null; canvasser_id: string; canvasser_name: string | null };
+
+export function useCanvassVisits(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['canvass-visits', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('canvass_visits')
+        .select(
+          'voter_id, occurred_at, outcome, persuadability_bucket, notes_snapshot, canvasser_id, voter:voter_id(full_name), canvasser:canvasser_id(full_name)'
+        )
+        .eq('project_id', projectId!)
+        .order('occurred_at', { ascending: false })
+        .limit(5000);
+      if (error) throw error;
+      const rows = data as unknown as {
+        voter_id: string;
+        occurred_at: string;
+        outcome: VisitOutcome;
+        persuadability_bucket: VisitForDrift['persuadability_bucket'];
+        notes_snapshot: string | null;
+        canvasser_id: string;
+        voter: { full_name: string | null } | null;
+        canvasser: { full_name: string | null } | null;
+      }[];
+      return rows.map(
+        (r): CanvassVisit => ({
+          voter_id: r.voter_id,
+          occurred_at: r.occurred_at,
+          outcome: r.outcome,
+          persuadability_bucket: r.persuadability_bucket,
+          notes_snapshot: r.notes_snapshot,
+          voter_name: r.voter?.full_name ?? null,
+          canvasser_id: r.canvasser_id,
+          canvasser_name: r.canvasser?.full_name ?? null
+        })
+      );
+    },
+    enabled: Boolean(projectId)
+  });
+}
+
+// Loads the caller's personal Turf Briefing customization (filter/threshold
+// settings) for a project. One row per (user, project); RLS restricts to
+// own rows (migration 0031), same shape as useDashboardLayout.ts. Always
+// resolves to a complete TurfPreferences — mergePreferences fills in
+// anything missing (including "nothing saved yet") with the defaults.
+export function useTurfPreferences(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['turf-preferences', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('turf_briefing_preferences')
+        .select('settings')
+        .eq('project_id', projectId!)
+        .maybeSingle();
+      if (error) throw error;
+      return mergePreferences(data?.settings as Partial<TurfPreferences> | undefined);
+    },
+    enabled: Boolean(projectId)
+  });
+}
+
+export function useSaveTurfPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ projectId, settings }: { projectId: string; settings: TurfPreferences }) => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error('Not signed in');
+      const { error } = await supabase
+        .from('turf_briefing_preferences')
+        .upsert(
+          { profile_id: auth.user.id, project_id: projectId, settings, updated_at: new Date().toISOString() },
+          { onConflict: 'profile_id,project_id' }
+        );
+      if (error) throw error;
+      return settings;
+    },
+    // Optimistic: write the new settings into the cache immediately so the
+    // Customize panel doesn't visually snap back while the save is in flight.
+    onMutate: async ({ projectId, settings }) => {
+      queryClient.setQueryData(['turf-preferences', projectId], settings);
+    },
+    onError: (_e, vars) => queryClient.invalidateQueries({ queryKey: ['turf-preferences', vars.projectId] })
   });
 }

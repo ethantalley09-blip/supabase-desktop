@@ -7,6 +7,7 @@ function donation(partial: Partial<Donation> & Pick<Donation, 'id' | 'donor_id' 
     project_id: 'p1',
     donated_at: '2026-01-01',
     payment_method: null,
+    voter_id: null,
     ...partial
   };
 }
@@ -39,7 +40,7 @@ describe('buildFundraisingSnapshot', () => {
       complianceUnlocked: false
     });
     const over = buildFundraisingSnapshot(
-      [{ id: '1', donor_id: 'a', amount_cents: 500000, project_id: 'p1', donated_at: '', payment_method: null }],
+      [{ id: '1', donor_id: 'a', amount_cents: 500000, project_id: 'p1', donated_at: '', payment_method: null, voter_id: null }],
       500000,
       100000
     );

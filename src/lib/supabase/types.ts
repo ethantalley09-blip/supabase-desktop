@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -99,6 +94,67 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvass_visits: {
+        Row: {
+          ballot_status: string
+          canvasser_id: string
+          contact_status: string
+          id: string
+          notes_snapshot: string | null
+          occurred_at: string
+          outcome: string
+          persuadability_bucket: string
+          project_id: string
+          voter_id: string
+        }
+        Insert: {
+          ballot_status: string
+          canvasser_id?: string
+          contact_status: string
+          id?: string
+          notes_snapshot?: string | null
+          occurred_at?: string
+          outcome: string
+          persuadability_bucket: string
+          project_id: string
+          voter_id: string
+        }
+        Update: {
+          ballot_status?: string
+          canvasser_id?: string
+          contact_status?: string
+          id?: string
+          notes_snapshot?: string | null
+          occurred_at?: string
+          outcome?: string
+          persuadability_bucket?: string
+          project_id?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvass_visits_canvasser_id_fkey"
+            columns: ["canvasser_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvass_visits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvass_visits_voter_id_fkey"
+            columns: ["voter_id"]
+            isOneToOne: false
+            referencedRelation: "voter_records"
             referencedColumns: ["id"]
           },
         ]
@@ -274,6 +330,7 @@ export type Database = {
           payment_method: string | null
           project_id: string
           recorded_by: string
+          voter_id: string | null
         }
         Insert: {
           amount_cents: number
@@ -284,6 +341,7 @@ export type Database = {
           payment_method?: string | null
           project_id: string
           recorded_by: string
+          voter_id?: string | null
         }
         Update: {
           amount_cents?: number
@@ -294,6 +352,7 @@ export type Database = {
           payment_method?: string | null
           project_id?: string
           recorded_by?: string
+          voter_id?: string | null
         }
         Relationships: [
           {
@@ -315,6 +374,13 @@ export type Database = {
             columns: ["recorded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_voter_id_fkey"
+            columns: ["voter_id"]
+            isOneToOne: false
+            referencedRelation: "voter_records"
             referencedColumns: ["id"]
           },
         ]
@@ -2009,6 +2075,45 @@ export type Database = {
           },
         ]
       }
+      turf_briefing_preferences: {
+        Row: {
+          id: string
+          profile_id: string
+          project_id: string
+          settings: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          project_id: string
+          settings?: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          project_id?: string
+          settings?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turf_briefing_preferences_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turf_briefing_preferences_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       volunteer_donor_asks: {
         Row: {
           ask_message: string
@@ -2068,6 +2173,7 @@ export type Database = {
           geocode_status: string
           id: string
           import_batch_id: string | null
+          last_contacted_at: string | null
           lat: number | null
           lng: number | null
           project_id: string
@@ -2086,6 +2192,7 @@ export type Database = {
           geocode_status?: string
           id?: string
           import_batch_id?: string | null
+          last_contacted_at?: string | null
           lat?: number | null
           lng?: number | null
           project_id: string
@@ -2104,6 +2211,7 @@ export type Database = {
           geocode_status?: string
           id?: string
           import_batch_id?: string | null
+          last_contacted_at?: string | null
           lat?: number | null
           lng?: number | null
           project_id?: string
@@ -2135,13 +2243,126 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      pg_all_foreign_keys: {
+        Row: {
+          fk_columns: unknown[] | null
+          fk_constraint_name: unknown
+          fk_schema_name: unknown
+          fk_table_name: unknown
+          fk_table_oid: unknown
+          is_deferrable: boolean | null
+          is_deferred: boolean | null
+          match_type: string | null
+          on_delete: string | null
+          on_update: string | null
+          pk_columns: unknown[] | null
+          pk_constraint_name: unknown
+          pk_index_name: unknown
+          pk_schema_name: unknown
+          pk_table_name: unknown
+          pk_table_oid: unknown
+        }
+        Relationships: []
+      }
+      tap_funky: {
+        Row: {
+          args: string | null
+          is_definer: boolean | null
+          is_strict: boolean | null
+          is_visible: boolean | null
+          kind: unknown
+          langoid: unknown
+          name: unknown
+          oid: unknown
+          owner: unknown
+          returns: string | null
+          returns_set: boolean | null
+          schema: unknown
+          volatility: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      _cleanup: { Args: never; Returns: boolean }
+      _contract_on: { Args: { "": string }; Returns: unknown }
+      _currtest: { Args: never; Returns: number }
+      _db_privs: { Args: never; Returns: unknown[] }
+      _extensions: { Args: never; Returns: unknown[] }
+      _get: { Args: { "": string }; Returns: number }
+      _get_latest: { Args: { "": string }; Returns: number[] }
+      _get_note: { Args: { "": string }; Returns: string }
+      _is_verbose: { Args: never; Returns: boolean }
+      _prokind: { Args: { p_oid: unknown }; Returns: unknown }
+      _query: { Args: { "": string }; Returns: string }
+      _refine_vol: { Args: { "": string }; Returns: string }
+      _retval: { Args: { "": string }; Returns: string }
+      _table_privs: { Args: never; Returns: unknown[] }
+      _temptypes: { Args: { "": string }; Returns: string }
+      _todo: { Args: never; Returns: string }
       add_project_addon: {
         Args: { p_key: string; p_project_id: string }
         Returns: undefined
       }
+      col_is_null:
+        | {
+            Args: {
+              column_name: unknown
+              description?: string
+              schema_name: unknown
+              table_name: unknown
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: unknown
+              description?: string
+              table_name: unknown
+            }
+            Returns: string
+          }
+      col_not_null:
+        | {
+            Args: {
+              column_name: unknown
+              description?: string
+              schema_name: unknown
+              table_name: unknown
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              column_name: unknown
+              description?: string
+              table_name: unknown
+            }
+            Returns: string
+          }
+      diag:
+        | {
+            Args: { msg: unknown }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.diag(msg => text), public.diag(msg => anyelement). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+        | {
+            Args: { msg: string }
+            Returns: {
+              error: true
+            } & "Could not choose the best candidate function between: public.diag(msg => text), public.diag(msg => anyelement). Try renaming the parameters or the function itself in the database so function overloading can be resolved"
+          }
+      diag_test_name: { Args: { "": string }; Returns: string }
+      do_tap:
+        | { Args: never; Returns: string[] }
+        | { Args: { "": string }; Returns: string[] }
+      fail:
+        | { Args: never; Returns: string }
+        | { Args: { "": string }; Returns: string }
+      findfuncs: { Args: { "": string }; Returns: string[] }
+      finish: { Args: { exception_on_failure?: boolean }; Returns: string[] }
+      format_type_string: { Args: { "": string }; Returns: string }
       get_my_permissions: { Args: { p_org_id: string }; Returns: Json }
       get_project_donation_total: {
         Args: { p_project_id: string }
@@ -2155,8 +2376,13 @@ export type Database = {
         Args: { p_org_id: string; p_permission: string }
         Returns: boolean
       }
+      has_unique: { Args: { "": string }; Returns: string }
+      in_todo: { Args: never; Returns: boolean }
+      is_empty: { Args: { "": string }; Returns: string }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      isnt_empty: { Args: { "": string }; Returns: string }
+      lives_ok: { Args: { "": string }; Returns: string }
       lookup_profile_for_invite: {
         Args: { p_email: string; p_org_id: string }
         Returns: {
@@ -2174,9 +2400,34 @@ export type Database = {
         }[]
       }
       my_unread_broadcasts: { Args: { p_org_id: string }; Returns: number }
+      no_plan: { Args: never; Returns: boolean[] }
+      num_failed: { Args: never; Returns: number }
+      os_name: { Args: never; Returns: string }
+      pass:
+        | { Args: never; Returns: string }
+        | { Args: { "": string }; Returns: string }
+      pg_version: { Args: never; Returns: string }
+      pg_version_num: { Args: never; Returns: number }
+      pgtap_version: { Args: never; Returns: number }
       project_org_id: { Args: { p_project_id: string }; Returns: string }
+      runtests:
+        | { Args: never; Returns: string[] }
+        | { Args: { "": string }; Returns: string[] }
       shares_org_with: { Args: { p_profile_id: string }; Returns: boolean }
+      skip:
+        | { Args: { "": string }; Returns: string }
+        | { Args: { how_many: number; why: string }; Returns: string }
       thread_org_id: { Args: { p_thread_id: string }; Returns: string }
+      throws_ok: { Args: { "": string }; Returns: string }
+      todo:
+        | { Args: { how_many: number }; Returns: boolean[] }
+        | { Args: { how_many: number; why: string }; Returns: boolean[] }
+        | { Args: { why: string }; Returns: boolean[] }
+        | { Args: { how_many: number; why: string }; Returns: boolean[] }
+      todo_end: { Args: never; Returns: boolean[] }
+      todo_start:
+        | { Args: never; Returns: boolean[] }
+        | { Args: { "": string }; Returns: boolean[] }
     }
     Enums: {
       churn_reason:
@@ -2194,7 +2445,9 @@ export type Database = {
         | "issue_focused"
     }
     CompositeTypes: {
-      [_ in never]: never
+      _time_trial_type: {
+        a_time: number | null
+      }
     }
   }
 }
@@ -2340,3 +2593,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -65,7 +65,36 @@ type Purpose =
   | 'interview_prep'
   | 'endorsement_ask'
   | 'quick_insight'
-  | 'geocode_strategy';
+  | 'geocode_strategy'
+  | 'turf_briefing'
+  | 'door_objection_assist'
+  | 'door_script_personalize'
+  | 'door_explainer'
+  | 'door_language_prep'
+  | 'shift_debrief'
+  | 'territory_difficulty_briefing'
+  | 'revisit_strategy'
+  | 'momentum_ask_script'
+  | 'household_cascade_ask'
+  | 'peak_ask_briefing'
+  | 'territory_roi_briefing'
+  | 'persistence_ask_script'
+  | 'golden_hour_ask_plan'
+  | 'ask_coverage_alert'
+  | 'canvasser_ask_coaching'
+  | 'election_countdown_ask'
+  | 'doorstep_recurring_ask'
+  | 'priority_door_briefing'
+  | 'canvasser_checkin_prompt'
+  | 'territory_staffing_briefing'
+  | 'canvasser_silence_checkin'
+  | 'neighborhood_proof_ask'
+  | 'donation_objection_handler'
+  | 'ask_rehearsal_prep'
+  | 'doorstep_referral_ask'
+  | 'bundler_cultivation_ask'
+  | 'event_planning_briefing'
+  | 'map_area_briefing';
 
 type Body = {
   orgId: string;
@@ -584,6 +613,23 @@ Rules:
 - Honest only: no fabricated matching funds, deadlines, or claims. If a real deadline is provided, you may use it.
 - Return JSON only.`;
 
+// neighborhood_proof_ask: a warm door's REAL count of neighbors on the same
+// street who have already given (neighborhoodProof.ts, real donations only,
+// donations.voter_id) — honest social proof, never a fabricated or rounded-
+// up number. Only ever called when that real count is greater than zero.
+const NEIGHBORHOOD_PROOF_SYSTEM = `You write a 20-SECOND spoken doorstep donation ask for a warm door (JSON: name, address, real note-based reasons, street name, and the REAL count of neighbors on that same street who have already given).
+
+Return ONLY a JSON object:
+{"pitch":"...","if_yes":"...","if_no":"...","suggested_ask_dollars":0}
+
+Rules:
+- pitch: 3-4 short spoken sentences, naturally weaving in the REAL neighbor-giver count as social proof (e.g. "a few folks on your street have already chipped in") — never round it up, never imply a specific number of neighbors beyond the real count given, never claim it's "everyone" or "most" of the street.
+- Ask small: suggested_ask_dollars between 5 and 25 unless context justifies more.
+- if_yes: one sentence — thank + how to give.
+- if_no: one gracious sentence, no pressure, no guilt.
+- Honest only: the neighbor count given IS real — never inflate it, never invent a second statistic alongside it.
+- Return JSON only.`;
+
 // ---- Outreach & Marketing suite (Comms tab, paid tier) ----
 // Channels beyond social: email campaigns, press releases, reporter pitches,
 // direct mail, and phone/text scripts. Same house rules as everywhere else:
@@ -677,6 +723,417 @@ Rules:
 - priority_call: the single most important thing to do TODAY given the numbers.
 - Never fabricate polling data, projected turnout, or any number not provided. Return JSON only.`;
 
+// turf_briefing: a real-time READ ON TODAY'S SHIFT, distinct from
+// gotv_sprint_plan (that's the multi-day countdown to election day; this is
+// right now, from a live snapshot of doors contacted in the last few hours,
+// doors remaining, and lean counts computed client-side from the canvassers'
+// own notes — never a purchased or modeled score).
+const TURF_BRIEFING_SYSTEM = `You write a 60-second pre-shift briefing for a canvass captain, from a real-time snapshot (JSON) of today's field activity: doors contacted recently, doors remaining, and how many doors lean supportive/persuadable/opposed based on the canvassers' own notes.
+
+Return ONLY a JSON object: {"headline":"...","focus_areas":[{"area":"...","why":"...","action":"..."}],"watch_out":"..."}
+
+Rules:
+- headline: one sentence, the single most important read on the shift so far.
+- focus_areas: 2-3 entries. Each "area" should reference a real territory name or number from the snapshot when one is provided, "why" cites the real numbers behind it, "action" is one concrete instruction a canvasser captain can give volunteers in the next hour.
+- watch_out: one sentence flagging the biggest risk (e.g. pace behind plan, a cluster of opposed doors, most doors going stale) — grounded only in the numbers given.
+- Never invent a ward, precinct, name, or number not present in the snapshot. If the snapshot is too thin to say anything specific, say so plainly rather than filling in generic filler.
+- Return JSON only.`;
+
+// door_objection_assist: the only REAL-TIME, at-the-door AI coaching in the
+// product — a canvasser types the objection they just heard and gets an
+// instant pivot, mid-conversation. `instructions` is the objection as heard;
+// `context`, if provided, is a real talking point staff typed in ahead of
+// time for this issue. Distinct from canvassing_script (pre-written, not
+// reactive) and doorstep_pitch (an ask, not an objection response).
+const DOOR_OBJECTION_SYSTEM = `A voter just raised an objection at the door — a canvasser typed exactly what they heard. You give an instant, honest 3-line pivot they can say in the next 10 seconds.
+
+Return ONLY a JSON object: {"acknowledge":"...","bridge":"...","pivot":"..."}
+
+Rules:
+- acknowledge: one short spoken sentence that takes the objection seriously — never dismissive, never a canned "I understand your concern."
+- bridge: one short spoken sentence connecting to the campaign's real position IF one was provided (context). If none was provided, give an honest, generic bridging technique (e.g. inviting them to share more, offering to follow up) — never invent a specific policy claim, promise, or statistic that wasn't given to you.
+- pivot: one short spoken sentence that redirects to a concrete next step (a follow-up, a specific ask, or just a genuine thank-you for the conversation) — never pressure, never guilt.
+- All three lines together should read naturally spoken aloud in under 15 seconds total.
+- Return JSON only.`;
+
+// doorstep_referral_ask: triggered the instant a canvasser records a REAL
+// successful gift (donations.voter_id, migration 0032) — captures the
+// psychological momentum of a fresh "yes" to ask for a referral while it's
+// warmest. Distinct from network_ask (an online donor-forwarded broadcast)
+// and neighborhood_proof_ask (social proof FROM neighbors who already gave,
+// not a referral request); this is the in-person moment right after a gift.
+const DOORSTEP_REFERRAL_SYSTEM = `A voter just made a REAL donation at the door (JSON: their name, the real amount given, their address). You write a warm, natural referral ask for the canvasser to say right after thanking them.
+
+Return ONLY a JSON object: {"thank_you":"...","referral_ask":"..."}
+
+Rules:
+- thank_you: one short, genuine spoken sentence thanking them for the REAL amount given — never inflate or round up the figure.
+- referral_ask: one short spoken sentence asking if there's a neighbor, friend, or family member who might also want to get involved — light, no pressure, framed as "since you're clearly someone who cares about this," never guilt-based, never implies the donor owes anything further.
+- Never fabricate urgency, a matching-gift claim, or a specific number of referrals expected.
+- Return JSON only.`;
+
+// bundler_cultivation_ask: a real cluster of donors who share a real
+// employer (donors.employer) and have ALL actually given (bundlerNetwork.ts)
+// — an ask to the cluster's own highest real giver to formally cultivate
+// their coworkers, distinct from any single-donor ask elsewhere in the app.
+const BUNDLER_CULTIVATION_SYSTEM = `A real donor is the top giver among several real coworkers at the same employer who have all independently donated (JSON: employer name, real donor count, real total dollars given by the group, the top donor's name, their real dollars given).
+
+Return ONLY a JSON object: {"ask_message":"...","suggested_event_idea":"..."}
+
+Rules:
+- ask_message: a short, warm message asking this specific real donor to help formally organize their coworkers who have already given — framed as recognizing their leadership, never as a demand or quota.
+- suggested_event_idea: one concrete, modest gathering format (e.g. a small office lunch, a short virtual call) sized to the REAL group count given — never invent a headline number of attendees or dollars beyond what's provided.
+- Never fabricate a matching-gift claim, a deadline, or a number not present in the data.
+- Return JSON only.`;
+
+// event_planning_briefing: a real, ranked donor invite list and an honest
+// realistic dollar range (eventPlanner.ts, anchored to each invitee's own
+// real largest gift to date) versus a real staff-entered target — must give
+// an honest gap assessment, never claim the target will be hit.
+const EVENT_PLANNING_SYSTEM = `You are given a real staff-entered fundraising target for an event (in dollars) and a real ranked invite list (JSON array of {name, totalGivenDollars, suggestedAskDollars}), plus the real realistic low/high dollar range the invite list could plausibly produce.
+
+Return ONLY a JSON object: {"headline":"...","gap_assessment":"...","priority_calls":["...","...","..."]}
+
+Rules:
+- headline: one sentence stating the real target and the real realistic range given.
+- gap_assessment: one honest sentence — if the target falls within or below the realistic range, say so plainly; if the target exceeds the realistic high end, say that plainly too and suggest expanding the invite list rather than pretending the gap doesn't exist.
+- priority_calls: up to 3 real names from the invite list, in the order given, worth a personal call first — grounded only in the real data provided.
+- Never invent a name, dollar figure, or attendee not present in the input.
+- Return JSON only.`;
+
+// donation_objection_handler: distinct from door_objection_assist (general
+// political pushback) — this is specifically for a decline or stall on a
+// DONATION ask (e.g. "no cash on me," "already gave online," "need to think
+// about it"). A canvasser types exactly what they heard; the response
+// includes an honest re-ask pivot AND, when relevant, a same-day text-to-
+// give follow-up the canvasser can send later instead of pushing in person.
+const DONATION_OBJECTION_SYSTEM = `A voter just declined or stalled on a real donation ask at the door — a canvasser typed exactly what they heard. You give an instant, honest response for the next 10 seconds, plus an optional same-day follow-up text.
+
+Return ONLY a JSON object: {"acknowledge":"...","pivot":"...","follow_up_text":"..."}
+
+Rules:
+- acknowledge: one short spoken sentence taking the real objection seriously — never dismissive, never guilt-tripping, never implying they're obligated to give.
+- pivot: one short spoken sentence — if the real objection is about payment method or timing (e.g. no cash, need to check with a partner), offer a concrete alternative (a text-to-give link, coming back another time); if it's a genuine "not interested," gracefully thank them and end the ask, no pressure.
+- follow_up_text: a short (under 40 words), warm same-day text-to-give message ONLY if the objection was about timing or payment method, never if they said no outright — in that case return an empty string.
+- Never invent a reason they declined beyond what was given, never fabricate urgency or a deadline.
+- Return JSON only.`;
+
+// door_script_personalize: a proactive, per-door opener BEFORE knocking —
+// distinct from door_objection_assist (reactive, mid-conversation) and
+// canvassing_script (generic, not tailored to one real door's signals).
+const DOOR_SCRIPT_SYSTEM = `You write a personalized 15-second doorstep opener for ONE specific door, from the real signals provided (party if known, how the door leans and why, language, any notes).
+
+Return ONLY a JSON object: {"opener":"...","key_points":["...","..."],"sign_off":"..."}
+
+Rules:
+- opener: one natural spoken sentence to open with, referencing a REAL provided signal where it fits naturally (e.g. a real note) — never creepy ("our records show..."), never inventing a signal not given.
+- key_points: 1-2 short spoken phrases to bring up if the conversation continues, grounded only in what's provided.
+- sign_off: one warm closing line appropriate to how the door leans (persuadable doors get an information offer, base-support doors get a concrete ask like a yard sign or volunteering, unknown/opposed doors get a low-pressure thank-you).
+- Never fabricate a campaign position, statistic, or promise not given to you.
+- Return JSON only.`;
+
+// door_explainer ("Why This Door"): synthesizes one door's real, already-
+// logged data into one paragraph a canvasser can read before knocking —
+// analysis, not drafting, so the guardrail is about not inventing facts
+// rather than about tone (pattern: ANALYSIS_SYSTEM).
+const DOOR_EXPLAINER_SYSTEM = `You summarize everything real and already logged about ONE door (party if known, persuadability lean and the real reasons behind it, and its real visit history) into one honest paragraph for a canvasser about to knock.
+
+Return ONLY a JSON object: {"summary":"..."}
+
+Rules:
+- summary: 2-4 sentences, plain language, weaving together only the facts provided — never speculation, never a fact not present in the data.
+- If the data is thin (e.g. no notes, no visit history), say so plainly rather than padding with generic filler.
+- Return JSON only.`;
+
+// door_language_prep: reuses the campaign's own dominant-language signal
+// (dominantVoterLanguage, route.ts) — practical courtesy phrases only,
+// never a cultural generalization about the language's speakers.
+const DOOR_LANGUAGE_SYSTEM = `A cluster of upcoming doors has a real dominant non-English language on file. You give a canvasser 3 short, practical, respectful phrases to use — not a lesson, not a stereotype about the culture, just courtesy.
+
+Return ONLY a JSON object: {"greeting":"...","key_phrase":"...","respectful_note":"..."}
+
+Rules:
+- greeting: a short polite greeting in the given language (with a simple phonetic pronunciation hint in parentheses).
+- key_phrase: one short phrase introducing the canvasser and the campaign, in the given language, with a pronunciation hint.
+- respectful_note: one practical English-language tip for the canvasser (e.g. "speak slowly, offer to come back with a translated flyer, don't assume literacy level") — never a generalization about the culture or its people.
+- If asked about a language you cannot render accurately, say so plainly rather than guessing.
+- Return JSON only.`;
+
+// shift_debrief: the backward-looking twin of turf_briefing (which is
+// forward-looking, pre-shift). This is a retrospective from real numbers
+// after the fact.
+const SHIFT_DEBRIEF_SYSTEM = `You write an end-of-shift debrief for a canvass captain, from a real snapshot (JSON) of what actually happened today: doors contacted, remaining doors, lean counts, and any real persuasion-drift alerts.
+
+Return ONLY a JSON object: {"headline":"...","wins":["...","..."],"follow_up_tomorrow":["...","..."]}
+
+Rules:
+- headline: one sentence, the single most important read on how the shift went.
+- wins: 1-3 concrete, real wins from the numbers provided (e.g. a real drift-to-support, a strong contact rate) — never invented ones.
+- follow_up_tomorrow: 1-3 concrete next actions grounded only in what's left (real remaining-door counts, real territory names if provided).
+- Never invent a name, number, or territory not present in the snapshot.
+- Return JSON only.`;
+
+// territory_difficulty_briefing: real per-territory contact/opposition/
+// dead-door rates (computeTerritoryDifficulty, territoryDifficulty.ts) in,
+// staffing guidance out — a resource-allocation aid, not a prediction.
+const TERRITORY_DIFFICULTY_SYSTEM = `You are given real per-territory field statistics (JSON array): contact rate, opposition rate, dead-door rate, and remaining doors, for territories with enough logged visits to mean something.
+
+Return ONLY a JSON object: {"ranked":[{"territory":"...","difficulty_note":"...","staffing_advice":"..."}]}
+
+Rules:
+- One entry per territory provided, in the order given (already ranked hardest-first).
+- difficulty_note: one sentence citing the REAL rate(s) that make this territory easy or hard.
+- staffing_advice: one concrete, practical suggestion (e.g. pair a new volunteer with an experienced one, prioritize a high-remaining low-difficulty territory first) grounded only in the real numbers given.
+- Never invent a territory, rate, or number not present in the data.
+- Return JSON only.`;
+
+// revisit_strategy: the single stubborn-door analog of shift_debrief/
+// territory_difficulty_briefing — real repeated no_answer attempts (from
+// canvass_visits) in, an honest read on whether/when to try again out. This
+// is advice about ONE already-identified door (buildRevisitQueue,
+// revisitQueue.ts), not a script — door_script_personalize already covers
+// the opener for whichever door a canvasser is about to knock next.
+const REVISIT_STRATEGY_SYSTEM = `A door has been attempted multiple real times (JSON: attempt count, time of the last attempt) with no successful contact yet. You give a canvass captain an honest read on whether it's worth one more try and, if so, a practical suggestion for timing or approach.
+
+Return ONLY a JSON object: {"verdict":"...","suggestion":"..."}
+
+Rules:
+- verdict: one plain sentence — genuinely say if the attempt count is high enough that effort may be better spent elsewhere, don't always default to "try again."
+- suggestion: one concrete, practical idea (a different time of day, a different day of the week, leaving a doorhanger, asking a neighbor) grounded only in the real numbers given — never invent a fact about the household not present in the data.
+- Never fabricate a reason the door hasn't answered (e.g. "they're probably avoiding you") — the data only shows attempts, not motives.
+- Return JSON only.`;
+
+// ===== Fundraising Intelligence: 5 purposes that graft a revenue layer
+// directly onto existing Turf Briefing signals, using the real
+// donations.voter_id link (migration 0032) so none of them are guessing —
+// every one either has a real prior gift to reference or explicitly has
+// none. =====
+
+// momentum_ask_script: a door just warmed up in real persuasion-drift data
+// (visitHistory.ts) and has never given — the exact psychological window
+// (foot-in-the-door) to make a first ask, before it fades.
+const MOMENTUM_ASK_SYSTEM = `A door's real persuasion lean just warmed up between two logged visits (JSON: from/to bucket, the voter's name) and they have never donated. You write a short doorstep ask capturing this exact moment while it's fresh.
+
+Return ONLY a JSON object: {"opener":"...","ask":"...","suggested_ask_dollars":10}
+
+Rules:
+- opener: one spoken sentence that acknowledges the real shift in their view (e.g. that they've come around) without being presumptuous about WHY — the data shows a lean change, never a reason for it.
+- ask: one spoken sentence making a small, low-pressure first-time ask.
+- suggested_ask_dollars: a modest first-gift amount (5-25), never a large figure — this is about starting a giving relationship, not maximizing one gift.
+- Never fabricate what changed their mind or invent any personal detail not given.
+- Return JSON only.`;
+
+// household_cascade_ask: one household member has already given (real,
+// linked donation) — the rest are a warm, values-aligned cross-sell.
+const HOUSEHOLD_CASCADE_SYSTEM = `One member of a household has already made a real donation (JSON: their name and amount given). You write a short doorstep or text ask to another real, named member of the SAME household who hasn't given yet.
+
+Return ONLY a JSON object: {"message":"...","suggested_ask_dollars":10}
+
+Rules:
+- message: 2-3 sentences, honestly framed as "your household already supports this campaign" — inform, don't guilt-trip or imply social pressure/surveillance. Never suggest the household member is being watched or compared.
+- Never state or imply the amount the other household member gave unless explicitly told to include it — default to just noting THAT they gave, not how much, since dollar amounts within a household can be sensitive.
+- suggested_ask_dollars: a reasonable first-gift amount, independent of the other member's amount.
+- Return JSON only.`;
+
+// peak_ask_briefing: real $-per-hour from doorstep-linked gifts only
+// (peakAskWindow.ts) — the revenue analog of Best Time to Knock.
+const PEAK_ASK_SYSTEM = `You are given the real hour of day that has raised the most doorstep-donation money so far (JSON: the hour, total $ and gift count in that hour, and the total sample size of linked gifts). You write a one-line staffing takeaway for a canvass captain.
+
+Return ONLY a JSON object: {"headline":"...","staffing_advice":"..."}
+
+Rules:
+- headline: one sentence citing the REAL hour and $ figure given — never invent a number not in the data.
+- staffing_advice: one concrete, practical suggestion for concentrating asks in that real window (e.g. schedule the strongest askers then, save undecided doors for other hours) grounded only in the data given.
+- If the sample size is small, say so plainly rather than overstating confidence.
+- Return JSON only.`;
+
+// territory_roi_briefing: real $-per-door-knocked ranking
+// (territoryFundraisingRoi.ts) — a different optimization axis (dollars)
+// than territory_difficulty_briefing's vote-contact ranking.
+const TERRITORY_ROI_SYSTEM = `You are given real per-territory fundraising data (JSON array), ranked highest dollars-per-door-knocked first: territory name, total $ raised, and doors knocked. This is a revenue-per-effort ranking, not a persuasion/vote ranking.
+
+Return ONLY a JSON object: {"ranked":[{"territory":"...","roi_note":"...","staffing_advice":"..."}]}
+
+Rules:
+- One entry per territory provided, in the order given.
+- roi_note: one sentence citing the REAL $ raised and doors-knocked figures for that territory.
+- staffing_advice: one concrete suggestion about deploying canvassers or doorstep-ask effort toward the highest-ROI territories, grounded only in the real numbers given.
+- Never invent a territory, dollar figure, or door count not present in the data.
+- Return JSON only.`;
+
+// persistence_ask_script: a door reached only after real repeated attempts
+// (persistenceAsk.ts) — a reciprocity moment distinct from a first-knock
+// ask, and distinct from revisit_strategy (which is about whether to try
+// again at all, not what to say once you finally have).
+const PERSISTENCE_ASK_SYSTEM = `A canvasser just finally reached a real voter after multiple genuine prior no-answer attempts (JSON: their name, the real number of prior attempts) and they have never donated. You write a short, honest doorstep ask that leans into having kept coming back.
+
+Return ONLY a JSON object: {"opener":"...","ask":"...","suggested_ask_dollars":10}
+
+Rules:
+- opener: one warm spoken sentence referencing the real fact that this took more than one try (e.g. "glad I finally caught you") — never guilt-trip them for being hard to reach.
+- ask: one spoken sentence making a small ask, framed as genuine persistence paying off, not an entitlement to their time.
+- suggested_ask_dollars: a modest amount (5-25).
+- Never invent why they were hard to reach — the data is only attempt counts, not reasons.
+- Return JSON only.`;
+
+// golden_hour_ask_plan: real daylight remaining (daylight.ts) crossed with
+// the highest-value warm doors still reachable (goldenHourPush.ts) — an
+// in-person ask takes longer than a knock-and-go contact, so the closing
+// window is better spent asking than knocking one more unscored door.
+const GOLDEN_HOUR_SYSTEM = `You are given real minutes of daylight left on a canvassing shift and a short list of real warm doors (JSON: name, address, real note-based reasons) still reachable and never yet asked.
+
+Return ONLY a JSON object: {"headline":"...","advice":"..."}
+
+Rules:
+- headline: one sentence citing the real minutes of daylight left and how many warm doors are listed.
+- advice: one concrete instruction to prioritize asking these specific real doors over knocking additional unscored ones before dark.
+- Never invent a door, address, or reason not present in the list.
+- Return JSON only.`;
+
+// ask_coverage_alert: a warm household multiple real canvassers have
+// visited (overlapGuard.ts's pattern) but no one has asked yet
+// (askCoverageGap.ts) — a coordination gap, not a data gap.
+const ASK_COVERAGE_SYSTEM = `A warm door (JSON: name, address, real note-based reasons for warmth) has been visited by multiple real canvassers (named) but nobody has asked for a donation yet.
+
+Return ONLY a JSON object: {"alert":"...","suggested_next_step":"..."}
+
+Rules:
+- alert: one sentence stating the real gap plainly (multiple people visited, no one asked) — not blaming a specific canvasser.
+- suggested_next_step: one concrete instruction for who should take point on the ask next time (e.g. whoever's assigned this territory next), grounded only in the names given.
+- Never invent a canvasser name or detail not present in the data.
+- Return JSON only.`;
+
+// canvasser_ask_coaching: real contact count vs. real linked-gift count for
+// one canvasser (canvasserAskCoach.ts) — coaching, not a public shaming
+// leaderboard entry.
+const CANVASSER_COACH_SYSTEM = `You are given one canvasser's real door-knocking stats (JSON: name, real contacts, real gifts logged, real ask rate percentage).
+
+Return ONLY a JSON object: {"observation":"...","coaching_tip":"..."}
+
+Rules:
+- observation: one honest, encouraging sentence stating the real numbers — never shaming, never comparing to a specific other canvasser by name.
+- coaching_tip: one concrete, practical suggestion for asking more often or more confidently at the door, grounded only in the real numbers given.
+- If the ask rate is already strong, say so plainly and suggest sustaining it rather than inventing a problem.
+- Return JSON only.`;
+
+// ask_rehearsal_prep: a confidence-building tool BEFORE a canvasser starts
+// asking, distinct from canvasser_ask_coaching (which coaches AFTER the
+// fact from real ask-rate stats). Grounded only in an aggregate snapshot of
+// today's real warm-door count and common real reasons (askRehearsal.ts) —
+// never a specific voter.
+const ASK_REHEARSAL_SYSTEM = `You are given a real aggregate snapshot of today's warm doors (JSON: door count, common real reasons they're warm — no names, no addresses).
+
+Return ONLY a JSON object: {"confidence_opener":"...","anticipated_questions":[{"question":"...","answer":"..."}]}
+
+Rules:
+- confidence_opener: one short, genuine sentence the CANVASSER can say to themselves before knocking — grounded in the real door count given, never generic hype.
+- anticipated_questions: exactly 4 realistic donor questions a canvasser doing small-dollar doorstep asks commonly hears (e.g. where the money goes, whether it's legit, can they get a receipt, why cash/card), each with one honest, confident, brief spoken answer.
+- Never fabricate a specific policy claim, tax-deductibility promise, or statistic not given — if unsure, the honest answer is to say what the campaign can confirm later.
+- Return JSON only.`;
+
+// election_countdown_ask: the fundraising analog of gotv_sprint_plan — a
+// REAL staff-entered election date (electionCountdownAsk.ts) drives urgency
+// on a real warm, ungiven door, never a fabricated deadline.
+const ELECTION_COUNTDOWN_SYSTEM = `A warm door (JSON: name, real note-based reasons for warmth) has never given, and the real number of days until election day is provided.
+
+Return ONLY a JSON object: {"opener":"...","ask":"...","suggested_ask_dollars":10}
+
+Rules:
+- opener: one spoken sentence referencing the REAL days-until-election figure given — never round it, never invent a different number.
+- ask: one spoken sentence making a small, time-pressured but not panicked ask.
+- suggested_ask_dollars: a modest amount (5-25).
+- Never fabricate a matching-funds deadline, poll number, or urgency claim beyond the real days-remaining figure given.
+- Return JSON only.`;
+
+// doorstep_recurring_ask: a real doorstep-linked donor (donations.voter_id)
+// with a currently-supportive real lean (doorstepRecurringUpgrade.ts) — an
+// upgrade ask for a follow-up visit, distinct from recurring_upgrade
+// (anniversary-timed, no door context).
+const DOORSTEP_RECURRING_SYSTEM = `A real donor gave a real one-time gift at the door and their most recent logged visit shows a genuinely supportive lean (JSON: name, real total given, real lean).
+
+Return ONLY a JSON object: {"opener":"...","ask":"...","suggested_monthly_dollars":5}
+
+Rules:
+- opener: one warm spoken sentence referencing their real prior gift and support.
+- ask: one spoken sentence proposing a small monthly recurring upgrade, framed as deepening a relationship, never as pressure.
+- suggested_monthly_dollars: a modest monthly amount (3-15), smaller than a typical one-time ask.
+- Never invent a reason they'd say yes or no, or a fact about them not given.
+- Return JSON only.`;
+
+// priority_door_briefing: the turnout-focused analog of golden_hour_ask_plan
+// — real persuadability + ballot status, revisit history, and days until
+// election (priorityDoor.ts) synthesized into one ranked "hit these doors
+// next" list. Deliberately excludes fundraising warmth, which already has
+// its own dedicated tool.
+const PRIORITY_DOOR_SYSTEM = `You are given a ranked list of real priority doors for a turnout push today (JSON: array of {name, address, real reasons}).
+
+Return ONLY a JSON object: {"headline":"...","doors":[{"name":"...","instruction":"..."}]}
+
+Rules:
+- headline: one sentence framing today's turnout priority given how many doors are listed.
+- doors: one entry per door in the list given, in the same order, each with a one-sentence instruction grounded ONLY in that door's real reasons.
+- Never invent a door, address, or reason not present in the list, and never add a door not in the input.
+- Return JSON only.`;
+
+// canvasser_checkin_prompt: a real, honest split in one canvasser's own
+// contact rate across today's shift (canvasserFatigue.ts) — a supportive
+// nudge to check in, never a performance write-up or discipline.
+const CANVASSER_CHECKIN_SYSTEM = `A canvasser's real contact rate dropped between the first and second half of their own shift today (JSON: name, real early rate, real later rate, real attempts considered).
+
+Return ONLY a JSON object: {"checkin_message":"..."}
+
+Rules:
+- checkin_message: one warm, brief message a captain could send THIS canvasser directly — asks how they're doing, suggests a short break or water, never mentions numbers, scores, or comparisons to anyone else.
+- Never frame this as a performance problem, discipline, or anything the canvasser needs to justify — it's a wellbeing check, full stop.
+- Never invent a reason for the drop (weather, tiredness, etc.) — the data doesn't say why, only that it happened.
+- Return JSON only.`;
+
+// territory_staffing_briefing: real remaining-door load per territory
+// against how many real canvassers are actually working it
+// (territoryStaffing.ts) — a cross-territory reallocation signal distinct
+// from territory_difficulty_briefing (vote-contact difficulty) and
+// territory_roi_briefing (revenue per door).
+const TERRITORY_STAFFING_SYSTEM = `You are given real reallocation suggestions (JSON array): a territory with real spare canvasser capacity relative to its remaining doors, and a real territory with far more remaining doors per canvasser.
+
+Return ONLY a JSON object: {"ranked":[{"suggestion":"...","reason":"..."}]}
+
+Rules:
+- One entry per suggestion provided, in the order given.
+- suggestion: one sentence naming the real from/to territories and recommending moving a canvasser or two.
+- reason: one sentence citing the REAL doors-per-canvasser figures for both territories given.
+- Never invent a territory name or figure not present in the data.
+- Return JSON only.`;
+
+// map_area_briefing: a captain drew an ad-hoc shape directly on the map
+// (areaSelect.ts's point-in-polygon filter, not a saved Territory) and
+// wants to know what's really inside it — the same real aggregate snapshot
+// shape as turf_briefing (buildBriefingSnapshot), just scoped to whatever
+// area was drawn instead of the whole filtered voter set.
+const MAP_AREA_BRIEFING_SYSTEM = `A campaign staffer drew a shape directly on the live map and wants to know what's inside it. You are given a real aggregate snapshot (JSON) of only the real voters whose mapped location falls inside that drawn shape — never the whole territory or project.
+
+Return ONLY a JSON object: {"headline":"...","focus_areas":[{"area":"...","why":"...","action":"..."}]}
+
+Rules:
+- headline: one sentence summarizing the real total voter count and persuadability mix inside the drawn shape.
+- focus_areas: 1-3 entries, each a real pattern in the data given (e.g. a large persuadable pocket, a stale contact rate) with a concrete field action.
+- Explicitly frame this as "the area you drew," not a named territory or the whole project.
+- Never invent a street name, count, or statistic not present in the snapshot.
+- Return JSON only.`;
+
+// canvasser_silence_checkin: a real canvasser who had an established
+// presence earlier today but has logged nothing in a while
+// (canvasserSilence.ts) — a safety/coordination check, distinct from
+// canvasser_checkin_prompt's declining-rate-while-still-active signal.
+const CANVASSER_SILENCE_SYSTEM = `A canvasser was actively logging real door visits earlier today but has logged nothing for a while (JSON: name, real minutes since their last visit, real visits logged today).
+
+Return ONLY a JSON object: {"checkin_message":"..."}
+
+Rules:
+- checkin_message: one brief, casual message a captain could send THIS canvasser directly — checks they're okay and asks if they need anything, never accusatory, never assumes something is wrong.
+- Never invent a reason for the gap (car trouble, quitting, etc.) — the data only says how long it's been, not why.
+- Never frame this as discipline or a missed quota.
+- Return JSON only.`;
+
 // mistake_response: accountability, not spin, for a REAL error the campaign's
 // own candidate made — distinct from self_opposition (anticipatory) and
 // issue_response (external events).
@@ -744,6 +1201,35 @@ function systemFor(purpose: Purpose): string {
   if (purpose === 'phone_script') return PHONE_SCRIPT_SYSTEM;
   if (purpose === 'volunteer_pipeline') return VOLUNTEER_PIPELINE_SYSTEM;
   if (purpose === 'gotv_sprint_plan') return GOTV_SPRINT_SYSTEM;
+  if (purpose === 'turf_briefing') return TURF_BRIEFING_SYSTEM;
+  if (purpose === 'door_objection_assist') return DOOR_OBJECTION_SYSTEM;
+  if (purpose === 'door_script_personalize') return DOOR_SCRIPT_SYSTEM;
+  if (purpose === 'door_explainer') return DOOR_EXPLAINER_SYSTEM;
+  if (purpose === 'door_language_prep') return DOOR_LANGUAGE_SYSTEM;
+  if (purpose === 'shift_debrief') return SHIFT_DEBRIEF_SYSTEM;
+  if (purpose === 'territory_difficulty_briefing') return TERRITORY_DIFFICULTY_SYSTEM;
+  if (purpose === 'revisit_strategy') return REVISIT_STRATEGY_SYSTEM;
+  if (purpose === 'momentum_ask_script') return MOMENTUM_ASK_SYSTEM;
+  if (purpose === 'household_cascade_ask') return HOUSEHOLD_CASCADE_SYSTEM;
+  if (purpose === 'peak_ask_briefing') return PEAK_ASK_SYSTEM;
+  if (purpose === 'territory_roi_briefing') return TERRITORY_ROI_SYSTEM;
+  if (purpose === 'persistence_ask_script') return PERSISTENCE_ASK_SYSTEM;
+  if (purpose === 'golden_hour_ask_plan') return GOLDEN_HOUR_SYSTEM;
+  if (purpose === 'ask_coverage_alert') return ASK_COVERAGE_SYSTEM;
+  if (purpose === 'canvasser_ask_coaching') return CANVASSER_COACH_SYSTEM;
+  if (purpose === 'election_countdown_ask') return ELECTION_COUNTDOWN_SYSTEM;
+  if (purpose === 'priority_door_briefing') return PRIORITY_DOOR_SYSTEM;
+  if (purpose === 'canvasser_checkin_prompt') return CANVASSER_CHECKIN_SYSTEM;
+  if (purpose === 'territory_staffing_briefing') return TERRITORY_STAFFING_SYSTEM;
+  if (purpose === 'map_area_briefing') return MAP_AREA_BRIEFING_SYSTEM;
+  if (purpose === 'canvasser_silence_checkin') return CANVASSER_SILENCE_SYSTEM;
+  if (purpose === 'neighborhood_proof_ask') return NEIGHBORHOOD_PROOF_SYSTEM;
+  if (purpose === 'donation_objection_handler') return DONATION_OBJECTION_SYSTEM;
+  if (purpose === 'ask_rehearsal_prep') return ASK_REHEARSAL_SYSTEM;
+  if (purpose === 'doorstep_referral_ask') return DOORSTEP_REFERRAL_SYSTEM;
+  if (purpose === 'bundler_cultivation_ask') return BUNDLER_CULTIVATION_SYSTEM;
+  if (purpose === 'event_planning_briefing') return EVENT_PLANNING_SYSTEM;
+  if (purpose === 'doorstep_recurring_ask') return DOORSTEP_RECURRING_SYSTEM;
   if (purpose === 'mistake_response') return MISTAKE_RESPONSE_SYSTEM;
   if (purpose === 'interview_prep') return INTERVIEW_PREP_SYSTEM;
   if (purpose === 'endorsement_ask') return ENDORSEMENT_ASK_SYSTEM;
@@ -969,6 +1455,128 @@ function buildPrompt(b: Body): string {
     return `Days remaining, ballot-chase status, and volunteer capacity (JSON):\n${b.context}\n\nBuild the day-by-day GOTV plan.`;
   }
 
+  if (b.purpose === 'turf_briefing') {
+    return `Real-time turf snapshot (JSON):\n${b.context}\n\nWrite the pre-shift briefing.`;
+  }
+
+  if (b.purpose === 'donation_objection_handler') {
+    const lines = [`Real decline/stall just heard on a donation ask: ${b.instructions}`];
+    if (b.context?.trim()) lines.push(`Door context (JSON): ${b.context}`);
+    lines.push('Give the acknowledge/pivot/follow_up_text response.');
+    return lines.join('\n');
+  }
+
+  if (b.purpose === 'neighborhood_proof_ask') {
+    return `A warm door with a real neighbor-giver count on the same street (JSON):\n${b.context}\n\nWrite the doorstep pitch.`;
+  }
+
+  if (b.purpose === 'ask_rehearsal_prep') {
+    return `A real aggregate snapshot of today's warm doors (JSON):\n${b.context}\n\nWrite the rehearsal prep.`;
+  }
+
+  if (b.purpose === 'doorstep_referral_ask') {
+    return `A real donation just recorded at the door (JSON):\n${b.context}\n\nWrite the thank-you and referral ask.`;
+  }
+
+  if (b.purpose === 'bundler_cultivation_ask') {
+    return `A real employer cluster of donors who have all given (JSON):\n${b.context}\n\nWrite the cultivation ask.`;
+  }
+
+  if (b.purpose === 'event_planning_briefing') {
+    return `A real target and a real ranked invite list with realistic range (JSON):\n${b.context}\n\nWrite the event planning briefing.`;
+  }
+
+  if (b.purpose === 'door_objection_assist') {
+    const lines = [`Objection just heard at the door: ${b.instructions}`];
+    if (b.context?.trim()) lines.push(`Our real position on this, as staff typed it: ${b.context}`);
+    lines.push('Give the 3-line pivot.');
+    return lines.join('\n');
+  }
+
+  if (b.purpose === 'door_script_personalize') {
+    return `Real signals for this one door (JSON):\n${b.context}\n\nWrite the personalized opener.`;
+  }
+
+  if (b.purpose === 'door_explainer') {
+    return `Real logged data for this one door (JSON):\n${b.context}\n\nWrite the "why this door" summary.`;
+  }
+
+  if (b.purpose === 'door_language_prep') {
+    return `Dominant language among upcoming doors (JSON):\n${b.context}\n\nGive the 3 courtesy phrases/notes.`;
+  }
+
+  if (b.purpose === 'shift_debrief') {
+    return `Real end-of-shift snapshot (JSON):\n${b.context}\n\nWrite the shift debrief.`;
+  }
+
+  if (b.purpose === 'territory_difficulty_briefing') {
+    return `Real per-territory field statistics, hardest-first (JSON):\n${b.context}\n\nWrite the staffing briefing.`;
+  }
+
+  if (b.purpose === 'revisit_strategy') {
+    return `Real repeated-attempt history for one stubborn door (JSON):\n${b.context}\n\nGive the revisit verdict and suggestion.`;
+  }
+
+  if (b.purpose === 'momentum_ask_script') {
+    return `Real persuasion-drift data for one door that just warmed up, never yet asked (JSON):\n${b.context}\n\nWrite the momentum ask.`;
+  }
+
+  if (b.purpose === 'household_cascade_ask') {
+    return `Real giving household member and the un-asked member to reach (JSON):\n${b.context}\n\nWrite the household cascade ask.`;
+  }
+
+  if (b.purpose === 'peak_ask_briefing') {
+    return `Real peak doorstep-fundraising hour data (JSON):\n${b.context}\n\nWrite the staffing takeaway.`;
+  }
+
+  if (b.purpose === 'territory_roi_briefing') {
+    return `Real per-territory fundraising ROI data, highest $/door first (JSON):\n${b.context}\n\nWrite the ROI staffing briefing.`;
+  }
+
+  if (b.purpose === 'persistence_ask_script') {
+    return `Real prior-attempt history for a door just finally reached, never yet asked (JSON):\n${b.context}\n\nWrite the persistence ask.`;
+  }
+
+  if (b.purpose === 'golden_hour_ask_plan') {
+    return `Real daylight remaining and the highest-value warm doors still reachable (JSON):\n${b.context}\n\nWrite the golden-hour plan.`;
+  }
+
+  if (b.purpose === 'ask_coverage_alert') {
+    return `A warm door visited by multiple real canvassers, never yet asked (JSON):\n${b.context}\n\nWrite the coverage-gap alert.`;
+  }
+
+  if (b.purpose === 'canvasser_ask_coaching') {
+    return `One canvasser's real contact and gift-logging stats (JSON):\n${b.context}\n\nWrite the coaching note.`;
+  }
+
+  if (b.purpose === 'election_countdown_ask') {
+    return `A warm, never-given door and the real days until election day (JSON):\n${b.context}\n\nWrite the countdown ask.`;
+  }
+
+  if (b.purpose === 'doorstep_recurring_ask') {
+    return `A real doorstep donor's total given and current real lean (JSON):\n${b.context}\n\nWrite the recurring upgrade ask.`;
+  }
+
+  if (b.purpose === 'priority_door_briefing') {
+    return `A ranked list of real priority turnout doors (JSON):\n${b.context}\n\nWrite the priority door briefing.`;
+  }
+
+  if (b.purpose === 'canvasser_checkin_prompt') {
+    return `A canvasser's real contact-rate split across today's shift (JSON):\n${b.context}\n\nWrite the check-in message.`;
+  }
+
+  if (b.purpose === 'map_area_briefing') {
+    return `A real aggregate snapshot of only the voters inside a hand-drawn map area (JSON):\n${b.context}\n\nWrite the area briefing.`;
+  }
+
+  if (b.purpose === 'territory_staffing_briefing') {
+    return `Real cross-territory reallocation suggestions (JSON):\n${b.context}\n\nWrite the staffing briefing.`;
+  }
+
+  if (b.purpose === 'canvasser_silence_checkin') {
+    return `A canvasser's real gap since their last logged visit today (JSON):\n${b.context}\n\nWrite the check-in message.`;
+  }
+
   if (b.purpose === 'mistake_response') {
     return `What happened, exactly as staff described it (JSON):\n${b.context}\n\nDraft the honest accountability response.`;
   }
@@ -1075,7 +1683,34 @@ Deno.serve(async (req) => {
     body.purpose === 'mistake_response' ||
     body.purpose === 'interview_prep' ||
     body.purpose === 'endorsement_ask' ||
-    body.purpose === 'quick_insight'
+    body.purpose === 'quick_insight' ||
+    body.purpose === 'turf_briefing' ||
+    body.purpose === 'door_script_personalize' ||
+    body.purpose === 'door_explainer' ||
+    body.purpose === 'door_language_prep' ||
+    body.purpose === 'shift_debrief' ||
+    body.purpose === 'territory_difficulty_briefing' ||
+    body.purpose === 'revisit_strategy' ||
+    body.purpose === 'momentum_ask_script' ||
+    body.purpose === 'household_cascade_ask' ||
+    body.purpose === 'peak_ask_briefing' ||
+    body.purpose === 'territory_roi_briefing' ||
+    body.purpose === 'persistence_ask_script' ||
+    body.purpose === 'golden_hour_ask_plan' ||
+    body.purpose === 'ask_coverage_alert' ||
+    body.purpose === 'canvasser_ask_coaching' ||
+    body.purpose === 'election_countdown_ask' ||
+    body.purpose === 'doorstep_recurring_ask' ||
+    body.purpose === 'priority_door_briefing' ||
+    body.purpose === 'canvasser_checkin_prompt' ||
+    body.purpose === 'territory_staffing_briefing' ||
+    body.purpose === 'canvasser_silence_checkin' ||
+    body.purpose === 'neighborhood_proof_ask' ||
+    body.purpose === 'ask_rehearsal_prep' ||
+    body.purpose === 'doorstep_referral_ask' ||
+    body.purpose === 'bundler_cultivation_ask' ||
+    body.purpose === 'event_planning_briefing' ||
+    body.purpose === 'map_area_briefing'
   ) {
     if (!body.context?.trim()) return json({ error: 'context is required' }, 400);
   } else if (!body.instructions?.trim()) {

@@ -6,8 +6,9 @@ import type { ContactStatus, Territory, VoterRecord } from './useTurf';
 
 // Voter files vary in header casing/naming; pull city and ward from the source
 // jsonb by matching common header spellings case-insensitively. This mirrors
-// how geocode.ts reads the City column.
-function pickField(data: Record<string, unknown> | undefined, candidates: string[]): string | null {
+// how geocode.ts reads the City column. Exported so turfBriefing.ts can apply
+// the same lookup to a Party column without duplicating the matching logic.
+export function pickField(data: Record<string, unknown> | undefined, candidates: string[]): string | null {
   if (!data) return null;
   const wanted = new Set(candidates.map((c) => c.toLowerCase()));
   for (const [key, value] of Object.entries(data)) {

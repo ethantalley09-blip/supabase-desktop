@@ -30,6 +30,7 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'content_pack', label: 'Content Pack', description: 'One brief -> email/text/script/social set.', category: 'comms', requires: ['comms.manage'] },
 
   // Turf
+  { id: 'turf_briefing', label: 'Turf Briefing', description: 'Live shift heatmap, party map, and a real-time pre-shift AI briefing.', category: 'turf', requires: ['turf.view'] },
   { id: 'doorstep_donations', label: 'Doorstep Donations', description: 'Warm doors + 20-second ask + canvasser leaderboard.', category: 'turf', requires: ['turf.view'] },
   { id: 'smart_segments', label: 'Smart Segments', description: 'Describe a voter universe, get a walk list.', category: 'turf', requires: ['turf.view'] },
   { id: 'field_coach', label: 'Field Coach', description: 'Turf-specific prioritized next actions.', category: 'turf', requires: ['turf.view'] },
@@ -71,6 +72,9 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   { id: 'reactivation_center', label: 'Reactivation Center', description: 'Rhythm-based lapse detection + 3-angle win-backs.', category: 'fundraising', requires: ['fundraising.manage'] },
   { id: 'issue_response', label: 'Issue Response Engine', description: 'News event -> instant multi-channel response pack.', category: 'fundraising', requires: ['fundraising.manage'] },
   { id: 'emergency_ask', label: 'Emergency Ask Generator', description: 'Real gap + real deadline -> same-day email/SMS/call-script pack.', category: 'fundraising', requires: ['fundraising.manage'] },
+  { id: 'bundler_network', label: 'Bundler Network Detector', description: 'Surfaces real coworker donor networks worth formally cultivating.', category: 'fundraising', requires: ['fundraising.manage'] },
+  { id: 'event_planner', label: 'High-Dollar Event Planner', description: 'Real, ranked invite list and honest dollar range for a fundraising event.', category: 'fundraising', requires: ['fundraising.manage'] },
+  { id: 'contribution_limit_guardian', label: 'Contribution Limit Guardian', description: 'Flags real donors/employer clusters nearing a configured contribution limit.', category: 'fundraising', requires: ['fundraising.view'] },
 
   // Compete (opposition research on the staff-logged PUBLIC record only)
   { id: 'filing_gap', label: 'Filing Gap', description: 'Your real total vs. their public filing number.', category: 'compete', requires: ['compete.view'] },

@@ -22,6 +22,12 @@ export type Donation = {
   donors?: { full_name: string } | null;
   // Who logged the gift — powers the doorstep canvasser leaderboard.
   recorder?: { full_name: string | null; email: string | null } | null;
+  // Set only when this gift was recorded from a specific door (migration
+  // 0032) — null for every online/mail/event gift, which is most of them.
+  // Powers the fundraising-intelligence features built on top of Turf
+  // Briefing (momentumAsk.ts, householdCascade.ts, peakAskWindow.ts,
+  // territoryFundraisingRoi.ts, persistenceAsk.ts).
+  voter_id: string | null;
 };
 
 // Compliance tools unlock once a project's lifetime donations cross this.
@@ -90,6 +96,8 @@ export function useRecordDonation() {
       // Either an existing donor or a new one to create inline.
       donorId?: string;
       newDonor?: { full_name: string; email?: string; employer?: string; occupation?: string };
+      // Set when this gift came from a real door — see migration 0032.
+      voterId?: string;
     }) => {
       let donorId = input.donorId;
       if (!donorId) {
@@ -108,7 +116,8 @@ export function useRecordDonation() {
         amount_cents: input.amountCents,
         donated_at: input.donatedAt,
         payment_method: input.paymentMethod,
-        recorded_by: user!.id
+        recorded_by: user!.id,
+        voter_id: input.voterId
       });
       if (error) throw error;
     },

@@ -18,12 +18,15 @@ import { Label } from '@/components/ui/label';
 import { RefineBar } from '@/features/ai/RefineBar';
 import { TranslateBar } from '@/features/ai/TranslateBar';
 import { AskOptimizer } from './AskOptimizer';
+import { BundlerNetwork } from './BundlerNetwork';
+import { ContributionLimitGuardian } from './ContributionLimitGuardian';
 import { CopyVariationTester } from './CopyVariationTester';
 import { DonorInsights } from './DonorInsights';
 import { DonorDedup } from './DonorDedup';
 import { EmergencyAsk } from './EmergencyAsk';
 import { FatigueGuard } from './FatigueGuard';
 import { FundingRunway } from './FundingRunway';
+import { HighDollarEventPlanner } from './HighDollarEventPlanner';
 import { IssueResponseEngine } from './IssueResponseEngine';
 import { LtvForecast } from './LtvForecast';
 import { NetworkMultiplier } from './NetworkMultiplier';
@@ -150,6 +153,9 @@ export function FundraisingTab({ project }: { project: Project }) {
       <div id="tool-retention_sequence"><RetentionSequence orgId={project.org_id} projectId={project.id} donors={donors} /></div>
       <div id="tool-fatigue_guard"><FatigueGuard orgId={project.org_id} projectId={project.id} /></div>
       <div id="tool-copy_variation_tester"><CopyVariationTester orgId={project.org_id} projectId={project.id} /></div>
+      <div id="tool-bundler_network"><BundlerNetwork orgId={project.org_id} projectId={project.id} donors={donors} donations={donations} /></div>
+      <div id="tool-event_planner"><HighDollarEventPlanner orgId={project.org_id} projectId={project.id} donors={donors} donations={donations} /></div>
+      <div id="tool-contribution_limit_guardian"><ContributionLimitGuardian donors={donors} donations={donations} /></div>
 
       <div id="tool-donor_message_studio"><DonorMessageStudio project={project} /></div>
 

@@ -971,3 +971,72 @@ export function useLatestRefundAlert(projectId: string | undefined) {
     enabled: Boolean(projectId)
   });
 }
+
+export type BundlerCultivationAsk = { ask_message: string; suggested_event_idea: string };
+
+// Drafting-only, no table — same pattern as door_objection_assist/
+// emergency_ask, since the cluster itself is already real, computed data
+// (bundlerNetwork.ts) and there's nothing further to persist per ask.
+export function useBundlerCultivationAsk() {
+  const ai = useAiAssist();
+  return useMutation({
+    mutationFn: async (input: {
+      orgId: string;
+      projectId: string;
+      employer: string;
+      anchorDonorName: string;
+      donorCount: number;
+      totalCents: number;
+    }) => {
+      const result = await ai.mutateAsync({
+        orgId: input.orgId,
+        projectId: input.projectId,
+        purpose: 'bundler_cultivation_ask',
+        context: JSON.stringify({
+          employer: input.employer,
+          anchorDonorName: input.anchorDonorName,
+          donorCount: input.donorCount,
+          totalDollars: input.totalCents / 100
+        })
+      });
+      const parsed = extractJson<BundlerCultivationAsk>(result.text);
+      if (!parsed) throw new Error('Could not parse the bundler cultivation ask');
+      return parsed;
+    }
+  });
+}
+
+export type EventPlanningBriefing = { headline: string; gap_assessment: string; priority_calls: string[] };
+
+export function useEventPlanningBriefing() {
+  const ai = useAiAssist();
+  return useMutation({
+    mutationFn: async (input: {
+      orgId: string;
+      projectId: string;
+      targetCents: number;
+      invitees: { name: string; totalGivenCents: number; suggestedAskCents: number }[];
+      realisticLowCents: number;
+      realisticHighCents: number;
+    }) => {
+      const result = await ai.mutateAsync({
+        orgId: input.orgId,
+        projectId: input.projectId,
+        purpose: 'event_planning_briefing',
+        context: JSON.stringify({
+          targetDollars: input.targetCents / 100,
+          invitees: input.invitees.map((i) => ({
+            name: i.name,
+            totalGivenDollars: i.totalGivenCents / 100,
+            suggestedAskDollars: i.suggestedAskCents / 100
+          })),
+          realisticLowDollars: input.realisticLowCents / 100,
+          realisticHighDollars: input.realisticHighCents / 100
+        })
+      });
+      const parsed = extractJson<EventPlanningBriefing>(result.text);
+      if (!parsed) throw new Error('Could not parse the event planning briefing');
+      return parsed;
+    }
+  });
+}

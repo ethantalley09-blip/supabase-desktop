@@ -5,10 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:start": "npx -y supabase@latest start",
     "db:reset": "npx -y supabase@latest db reset",

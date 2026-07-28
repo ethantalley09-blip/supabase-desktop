@@ -1,9 +1,18 @@
 # Lynx — instructions for AI-assisted maintenance
 
-Desktop platform (Tauri v1 + React 18 + TS + Vite 8 + Supabase) for political
-campaigns/advocacy orgs. Read `README.md` for setup, `docs/ARCHITECTURE.md`
-for the data model, `docs/TODO.md` for deferred work. This file is the
-operational contract: follow it exactly.
+Desktop platform (Tauri v1 + React 18 + JavaScript/JSX + Vite 8 + Supabase)
+for political campaigns/advocacy orgs. Read `README.md` for setup,
+`docs/ARCHITECTURE.md` for the data model, `docs/TODO.md` for deferred work.
+This file is the operational contract: follow it exactly.
+
+**Stack note:** the app was TypeScript through most of its history; every
+`.ts`/`.tsx` source file was converted to plain `.js`/`.jsx` in one pass (see
+"Sharp edges already hit" below) at the owner's explicit request. Older prose
+in this file that names a file as `Foo.ts`/`Foo.tsx` means `Foo.js`/`Foo.jsx`
+now — not worth rewriting every mention, but don't be surprised by the
+extension mismatch. There is no `npm run typecheck` anymore and no
+compile-time type safety net; `npm run build` (bundling only) and `npm run
+test` are the only automated correctness checks left.
 
 ## Non-negotiable invariants
 
@@ -41,9 +50,11 @@ operational contract: follow it exactly.
    "Your AI tools" summary. To add a new AI tool: add one entry to
    `TOOL_REGISTRY` with its required permissions; no other plumbing needed.
 5. **Migrations are append-only** once pushed anywhere shared. Add a new
-   numbered file in `supabase/migrations/`; never edit an applied one.
-   After schema changes, regenerate types (workflow below) — type errors
-   about missing tables/RPCs usually mean you forgot.
+   numbered file in `supabase/migrations/`; never edit an applied one. There
+   is no more generated-types step to forget (see stack note at the top) —
+   a typo'd table/column name in a `.from(...)` call now only surfaces at
+   runtime, so double-check new queries by hand instead of relying on a
+   compiler to catch it.
 6. **Compliance is NOT legal automation.** Rulesets are placeholder config
    with a persistent "not legal advice" banner. Do not build FEC/state
    filing logic without the user confirming counsel review.
@@ -58,11 +69,15 @@ operational contract: follow it exactly.
 - Local DB (Docker Desktop must be running):
   `npm run db:start` → `npm run db:reset` (applies all migrations, wipes
   data) → `npm run seed` (rebuilds test users/org/project; idempotent).
-- Regenerate DB types after any migration:
-  `npx -y supabase@latest gen types typescript --local | Out-File -FilePath src/lib/supabase/types.ts -Encoding utf8`
-- Verify before claiming done: `npm run typecheck` && `npm run test` &&
-  `npm run build`, then exercise the change in the browser (dev server on
-  :1420 via `npm run dev`). Direct SQL for assertions:
+- ~~Regenerate DB types after any migration~~ — vestigial now that the app
+  is plain JS: `src/lib/supabase/client.js` calls `createClient(url, key)`
+  with no generic, so nothing consumes generated types anymore. Table/column
+  typos in a `.from('table')` call are no longer caught until runtime — a
+  real regression versus the old TS setup, not something to work around
+  silently.
+- Verify before claiming done: `npm run test` && `npm run build`, then
+  exercise the change in the browser (dev server on :1420 via `npm run
+  dev`). Direct SQL for assertions:
   `docker exec supabase_db_Lynx_Stuff psql -U postgres -d postgres -c "..."`
 - **RLS policy tests**: `npm run test:rls` (pgTAP via `supabase test db
   --local`, needs local Docker Supabase running — NOT part of `npm test`,
@@ -86,6 +101,31 @@ operational contract: follow it exactly.
 
 ## Sharp edges already hit (don't rediscover)
 
+- **The entire codebase was converted from TypeScript to plain JavaScript in
+  one pass** (owner-requested, explicit "entire codebase" confirmation given
+  the tradeoffs). Method: the TypeScript compiler's own `ts.transpileModule`
+  per-file, run once across every `.ts`/`.tsx` file under `src/`,
+  `supabase/functions/`, and `api/` (plus `vite.config.ts` itself) — the same
+  per-file type-erasure mechanism the dev server already used at runtime, so
+  JSX and formatting came through close to untouched. `tsconfig.json` /
+  `tsconfig.node.json` were deleted; `package.json`'s `build` script dropped
+  `tsc &&`; the `typecheck` script was removed entirely; `index.html` and
+  `vite.config.js` had their `.tsx`/`.ts` file references updated to
+  `.jsx`/`.js`. Two files were pure type declarations with no runtime output
+  and were deleted outright (`src/vite-env.d.ts`,
+  `src/features/export/types.ts`); `src/lib/supabase/types.ts` had one real
+  runtime export (`Constants`, unused elsewhere) and survived as a small
+  `types.js`. Verified via `npm run build` (3520 modules, zero errors) and
+  `npm run test` (458/458) both green post-conversion, plus a live
+  browser check (login page rendered, zero console errors). **Prose comments
+  throughout the codebase still say `Foo.ts`/`Foo.tsx` in a lot of places**
+  (referring to a file by its old name) — cosmetic drift, not worth a bulk
+  rewrite, but don't take a `.ts`/`.tsx` mention in a comment as evidence the
+  file still exists under that extension. The real, permanent cost: no more
+  compile-time type safety anywhere in the app — `npm run build` only proves
+  the bundler can resolve and package the code, not that types/props/function
+  signatures line up. Read the code carefully; the compiler won't catch
+  mismatches for you anymore.
 - Vite 8 uses rolldown/oxc — `build.minify: 'esbuild'` breaks the build.
 - The US Census geocoder has no CORS headers: `src/features/turf/geocode.ts`
   is transport-aware (Tauri native HTTP in-app, `/census-geocode` Vite proxy
@@ -116,9 +156,9 @@ operational contract: follow it exactly.
 - The first SuperAdmin is bootstrapped via direct SQL only (by design).
 - `zod.coerce` breaks react-hook-form resolver typing (zod 4): validate as
   string, convert manually (see FundraisingTab donation amount).
-- After adding a migration, `npm run typecheck` fails on that table/column
-  until you `db:reset` + regenerate types (workflow above) — this is
-  expected, not a bug, not a sign anything is broken.
+- (Historical, from the TypeScript era: adding a migration used to fail
+  `npm run typecheck` on the new table/column until types were regenerated.
+  That script no longer exists — see the stack note at the top of this file.)
 
 ## AI subsystem (`ai-assist` edge function)
 

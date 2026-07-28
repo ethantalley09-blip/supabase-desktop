@@ -7,6 +7,7 @@ import { remainingDoorsToday } from '@/features/turf/turfBriefingMath';
 import { buildRevisitQueue } from '@/features/turf/revisitQueue';
 import { summarizeLogistics, summarizeShiftsForDate } from '@/features/staffing/staffingMath';
 import { currentDoorScript, currentSurveyQuestions } from '@/features/scripts/scriptMath';
+import { computeSurveyAbandonment, computeSurveyCompletion, mostSkewedQuestion } from '@/features/scripts/surveyAnalytics';
 const usd = (cents) => `$${Math.round(cents / 100).toLocaleString()}`;
 // ---------------------------------------------------------------------------
 // Canvassing performance (§5) — real per-canvasser production, reusing
@@ -908,6 +909,59 @@ export function answerCurrentSurveyQuestions(entries) {
             ? `${qs.length} question${qs.length === 1 ? '' : 's'}: ${qs.join(' / ')}`
             : 'No survey questions have been entered yet.',
         evidence: qs.length > 0 ? qs.slice(0, 5) : []
+    };
+}
+// ---------------------------------------------------------------------------
+// Survey/script §8 [Derived]-tier remainder — completion rate, abandonment,
+// answer-choice skew — reuses surveyAnalytics.js over the new
+// survey_responses table (migration 0035_survey_responses.sql).
+// ---------------------------------------------------------------------------
+export function answerSurveyCompletion(visits, responses, activeQuestions) {
+    const question = 'What percentage of canvassers are completing the full survey?';
+    if (activeQuestions.length === 0) {
+        return { id: 'survey_completion', question, answer: 'No active survey questions are configured yet.', evidence: [] };
+    }
+    const stats = computeSurveyCompletion(visits, responses, activeQuestions);
+    if (stats.attemptedVisits === 0) {
+        return { id: 'survey_completion', question, answer: 'No survey answers have been logged at the door yet.', evidence: [] };
+    }
+    return {
+        id: 'survey_completion',
+        question,
+        answer: `${stats.completionRatePct}% of attempted surveys are completed in full (${stats.fullyCompletedVisits} of ${stats.attemptedVisits}).`,
+        evidence: [`${stats.attemptRatePct}% of contacted doors had the survey attempted at all`, `${stats.eligibleVisits} real contacted doors total`]
+    };
+}
+export function answerSurveyAbandonment(visits, responses, activeQuestions) {
+    const question = 'At what point in the survey are people dropping off?';
+    if (activeQuestions.length === 0) {
+        return { id: 'survey_abandonment', question, answer: 'No active survey questions are configured yet.', evidence: [] };
+    }
+    const stats = computeSurveyAbandonment(visits, responses, activeQuestions);
+    if (stats.attemptedVisits === 0) {
+        return { id: 'survey_abandonment', question, answer: 'No survey answers have been logged at the door yet.', evidence: [] };
+    }
+    if (stats.abandonedVisits === 0) {
+        return { id: 'survey_abandonment', question, answer: `No abandonment — every attempted survey (${stats.attemptedVisits}) was completed in full.`, evidence: [] };
+    }
+    return {
+        id: 'survey_abandonment',
+        question,
+        answer: `${stats.abandonmentRatePct}% of attempted surveys are abandoned before the end (${stats.abandonedVisits} of ${stats.attemptedVisits}).${stats.topDropOffQuestion ? ` Most common drop-off point: "${stats.topDropOffQuestion.content}".` : ''}`,
+        evidence: stats.topDropOffQuestion ? [`${stats.topDropOffQuestion.count} surveys stopped there`] : []
+    };
+}
+export function answerAnswerChoiceSkew(responses, activeQuestions) {
+    const question = 'Are answers to any survey question heavily skewed one way?';
+    const skewed = mostSkewedQuestion(responses, activeQuestions);
+    if (!skewed) {
+        return { id: 'answer_choice_skew', question, answer: 'No structured (multiple-choice) survey question has enough logged answers yet to check for skew.', evidence: [] };
+    }
+    return {
+        id: 'answer_choice_skew',
+        question,
+        answer: `"${skewed.content}" is skewed toward "${skewed.topChoice.choice}" (${skewed.topChoice.pct}% of ${skewed.totalAnswers} answers).`,
+        evidence: skewed.breakdown.slice(1, 3).map((b) => `"${b.choice}": ${b.pct}%`)
     };
 }
 export function scenarioAdjustPace(currentDailyRate, remaining, changePct) {

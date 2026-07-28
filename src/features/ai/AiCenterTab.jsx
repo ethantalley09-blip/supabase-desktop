@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { buildFundraisingSnapshot, COMPLIANCE_THRESHOLD_CENTS, useDonationTotal, useDonations } from '@/features/fundraising/useFundraising';
-import { buildTurfSnapshot, dominantVoterLanguage, useCanvassVisits, useTerritories, useVoterRecords } from '@/features/turf/useTurf';
+import { buildTurfSnapshot, dominantVoterLanguage, useCanvassVisits, useSurveyResponses, useTerritories, useVoterRecords } from '@/features/turf/useTurf';
 import { computeGeocodeHealth } from '@/features/turf/geocodeHealth';
 import { useAvailableTools } from '@/features/rbac/useAvailableTools';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
@@ -13,7 +13,7 @@ import { AiDashboard } from './AiDashboard';
 import { buildCannedAnswers } from './cannedAnswers';
 import { assessConfidence, buildFollowUpInstructions, buildScopeLine, FOLLOW_UP_PROMPTS } from './conversationContext';
 import { useAdvisorSocialPosts } from './advisorData';
-import { answerAvgDoorsPerCanvasserToday, answerBestContactRateTerritory, answerBestDayOfWeek, answerBestPerformingPost, answerBestTimeToKnock, answerSkipADayImpact, answerCanvasserMomentum, answerCanvasserWellbeing, answerCoachingPairs, answerCurrentDoorScript, answerCurrentSurveyQuestions, answerDonorConcentration, answerDonorGrowthVsAverageGift, answerDonorRepeatShare, answerDoorsKnockedToday, answerDoorstepAttribution, answerFundraisingPace, answerHardestTerritory, answerLodgingCost, answerNextTerritoryToCanvass, answerPaymentMethodBreakdown, answerPersuasionDrift, answerPostingFrequency, answerRevisitCandidates, answerSocialPerformance, answerTeamContactRate, answerTerritorySupportBreakdown, answerTodaysContactRate, answerTodaysStaffing, answerTodayVsBaseline, answerTopCanvasser, answerTopCanvasserThisWeek, answerTopFundraiser, answerUnattemptedDoors, answerWalkbookSizeOutliers, answerWeekendVsWeekday, answerWeeklySocialReach, answerWorstContactRateTerritory, computeAverageDailyDoors, computeFundraisingPace, describeContactRateDropAlert, describeDataFreshnessAlert, describeFundraisingMomentumAlert, scenarioAdjustPace } from './advisorInsights';
+import { answerAnswerChoiceSkew, answerAvgDoorsPerCanvasserToday, answerBestContactRateTerritory, answerBestDayOfWeek, answerBestPerformingPost, answerBestTimeToKnock, answerSkipADayImpact, answerCanvasserMomentum, answerCanvasserWellbeing, answerCoachingPairs, answerCurrentDoorScript, answerCurrentSurveyQuestions, answerDonorConcentration, answerDonorGrowthVsAverageGift, answerDonorRepeatShare, answerDoorsKnockedToday, answerDoorstepAttribution, answerFundraisingPace, answerHardestTerritory, answerLodgingCost, answerNextTerritoryToCanvass, answerPaymentMethodBreakdown, answerPersuasionDrift, answerPostingFrequency, answerRevisitCandidates, answerSocialPerformance, answerSurveyAbandonment, answerSurveyCompletion, answerTeamContactRate, answerTerritorySupportBreakdown, answerTodaysContactRate, answerTodaysStaffing, answerTodayVsBaseline, answerTopCanvasser, answerTopCanvasserThisWeek, answerTopFundraiser, answerUnattemptedDoors, answerWalkbookSizeOutliers, answerWeekendVsWeekday, answerWeeklySocialReach, answerWorstContactRateTerritory, computeAverageDailyDoors, computeFundraisingPace, describeContactRateDropAlert, describeDataFreshnessAlert, describeFundraisingMomentumAlert, scenarioAdjustPace } from './advisorInsights';
 import { quickPromptsForCategories } from './roleQuickPrompts';
 import { useHotelBookings, useShifts } from '@/features/staffing/useStaffing';
 import { useCampaignScripts, useCreateScript } from '@/features/scripts/useScripts';
@@ -47,6 +47,7 @@ export function AiCenterTab({ project, onOpenTool }) {
     const { data: shifts } = useShifts(project.id);
     const { data: hotelBookings } = useHotelBookings(project.id);
     const { data: campaignScripts } = useCampaignScripts(project.id);
+    const { data: surveyResponses } = useSurveyResponses(project.id);
     const canManageScripts = useHasPermission(project.org_id, 'turf.manage');
     const ask = useAiAssist();
     const coach = useAiAssist();
@@ -172,11 +173,25 @@ export function AiCenterTab({ project, onOpenTool }) {
         return [answerTodaysStaffing(shiftRows, todayDate), answerLodgingCost(hotelBookings ?? [])];
     }, [shifts, hotelBookings, todayDate]);
     // Survey/script (§8, items 1-2) — migration 0034_campaign_scripts.sql.
-    const scriptEntries = useMemo(() => (campaignScripts ?? []).map((s) => ({ kind: s.kind, content: s.content, sortOrder: s.sort_order, active: s.active })), [campaignScripts]);
-    const advisorScripts = useMemo(() => [answerCurrentDoorScript(scriptEntries), answerCurrentSurveyQuestions(scriptEntries)], [scriptEntries]);
+    const scriptEntries = useMemo(() => (campaignScripts ?? []).map((s) => ({ id: s.id, kind: s.kind, content: s.content, sortOrder: s.sort_order, active: s.active, choices: s.choices })), [campaignScripts]);
+    // Survey/script §8 [Derived]-tier remainder — completion rate, abandonment,
+    // answer-choice skew — migration 0035_survey_responses.sql.
+    const activeSurveyQuestions = useMemo(() => scriptEntries.filter((s) => s.kind === 'survey_question' && s.active), [scriptEntries]);
+    const advisorScripts = useMemo(() => [
+        answerCurrentDoorScript(scriptEntries),
+        answerCurrentSurveyQuestions(scriptEntries),
+        answerSurveyCompletion(canvassVisits ?? [], surveyResponses ?? [], activeSurveyQuestions),
+        answerSurveyAbandonment(canvassVisits ?? [], surveyResponses ?? [], activeSurveyQuestions),
+        answerAnswerChoiceSkew(surveyResponses ?? [], activeSurveyQuestions)
+    ], [scriptEntries, activeSurveyQuestions, canvassVisits, surveyResponses]);
     const createScript = useCreateScript();
     const [newDoorScript, setNewDoorScript] = useState('');
     const [newSurveyQuestion, setNewSurveyQuestion] = useState('');
+    // Optional comma-separated choices — a structured (multiple-choice)
+    // question, needed for answer-choice skew; left blank, the question
+    // stays open-ended text (surveyAnalytics.js honestly excludes those from
+    // skew rather than inventing buckets for free text).
+    const [newSurveyChoices, setNewSurveyChoices] = useState('');
     // "What if our pace changes X%?" scenario simulator (§20 of the advisor
     // spec) — pure math over the real current daily rate, no AI call.
     const scenario = useMemo(() => scenarioAdjustPace(fundraisingPace.dailyAverageCents, Math.max(0, scenarioGoalDollars * 100 - (donationTotal ?? 0)), scenarioPaceChangePct), [fundraisingPace, scenarioGoalDollars, scenarioPaceChangePct, donationTotal]);
@@ -380,9 +395,16 @@ export function AiCenterTab({ project, onOpenTool }) {
                 Save
               </Button>
             </div>
-            <div className="flex gap-2">
-              <Input placeholder="Add a survey question…" value={newSurveyQuestion} onChange={(e) => setNewSurveyQuestion(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && newSurveyQuestion.trim() && createScript.mutate({ projectId: project.id, kind: 'survey_question', content: newSurveyQuestion, sortOrder: scriptEntries.length }, { onSuccess: () => setNewSurveyQuestion('') })}/>
-              <Button size="sm" variant="outline" disabled={!newSurveyQuestion.trim() || createScript.isPending} onClick={() => createScript.mutate({ projectId: project.id, kind: 'survey_question', content: newSurveyQuestion, sortOrder: scriptEntries.length }, { onSuccess: () => setNewSurveyQuestion('') })}>
+            <div className="flex flex-wrap gap-2">
+              <Input placeholder="Add a survey question…" value={newSurveyQuestion} onChange={(e) => setNewSurveyQuestion(e.target.value)}/>
+              <Input placeholder="Choices, comma-separated (optional — blank = open text)" value={newSurveyChoices} onChange={(e) => setNewSurveyChoices(e.target.value)} className="w-64"/>
+              <Button size="sm" variant="outline" disabled={!newSurveyQuestion.trim() || createScript.isPending} onClick={() => createScript.mutate({
+                projectId: project.id,
+                kind: 'survey_question',
+                content: newSurveyQuestion,
+                sortOrder: scriptEntries.length,
+                choices: newSurveyChoices.split(',').map((c) => c.trim()).filter(Boolean)
+            }, { onSuccess: () => { setNewSurveyQuestion(''); setNewSurveyChoices(''); } })}>
                 Add question
               </Button>
             </div>

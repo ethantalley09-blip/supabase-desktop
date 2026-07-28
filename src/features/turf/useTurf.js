@@ -27,7 +27,10 @@ function deriveOutcome(contactStatus, notes) {
 // non-door sources. Best-effort: a visit-log failure shouldn't block the
 // status/notes update that already succeeded, so errors are swallowed here
 // (the write to voter_records itself, which IS the source of truth for
-// current state, already threw on failure before this runs).
+// current state, already threw on failure before this runs). Returns the new
+// row's id (or null on failure) so a caller can attach survey_responses to
+// this specific visit (migration 0035) — optional, ignored by every caller
+// that doesn't need it.
 async function logVisit(input) {
     const { bucket } = classifyPersuadability({
         contact_status: input.contactStatus,
@@ -35,7 +38,7 @@ async function logVisit(input) {
         canvass_notes: input.notes
     });
     try {
-        await supabase.from('canvass_visits').insert({
+        const { data, error } = await supabase.from('canvass_visits').insert({
             voter_id: input.voterId,
             project_id: input.projectId,
             contact_status: input.contactStatus,
@@ -43,10 +46,14 @@ async function logVisit(input) {
             notes_snapshot: input.notes,
             persuadability_bucket: bucket,
             outcome: deriveOutcome(input.contactStatus, input.notes)
-        });
+        }).select('id').single();
+        if (error)
+            throw error;
+        return data.id;
     }
     catch {
         // Decoration on top of the real update — never surfaced to the user.
+        return null;
     }
 }
 // City/ward extraction and walk-order optimization live in ./route (no
@@ -290,13 +297,68 @@ export function useUpdateVoterNotes() {
         }
     });
 }
+// Records one real survey attempt at the door: logs a visit (same as any
+// other door contact — a survey conversation IS a real door contact) then
+// attaches the answers actually given to that specific visit (migration
+// 0035_survey_responses.sql). Kept separate from useUpdateVoterNotes rather
+// than folded into it — a canvasser may run the survey without necessarily
+// also leaving a free-text note, or vice versa.
+export function useLogSurveyResponses() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (input) => {
+            const answered = input.answers.filter((a) => a.answer.trim());
+            if (answered.length === 0)
+                return;
+            const visitId = await logVisit({
+                voterId: input.voterId,
+                projectId: input.projectId,
+                contactStatus: input.current.contact_status,
+                ballotStatus: input.current.ballot_status,
+                notes: input.current.canvass_notes
+            });
+            // logVisit already swallows its own errors (best-effort log); if it
+            // couldn't create a visit row, there's nothing to attach answers to.
+            if (!visitId)
+                return;
+            const { error } = await supabase.from('survey_responses').insert(answered.map((a) => ({
+                visit_id: visitId,
+                script_id: a.scriptId,
+                project_id: input.projectId,
+                answer: a.answer.trim()
+            })));
+            if (error)
+                throw error;
+        },
+        onSuccess: (_r, vars) => {
+            queryClient.invalidateQueries({ queryKey: ['canvass-visits', vars.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['survey-responses', vars.projectId] });
+        }
+    });
+}
+export function useSurveyResponses(projectId) {
+    return useQuery({
+        queryKey: ['survey-responses', projectId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('survey_responses')
+                .select('visit_id, script_id, answer')
+                .eq('project_id', projectId)
+                .limit(20000);
+            if (error)
+                throw error;
+            return data;
+        },
+        enabled: Boolean(projectId)
+    });
+}
 export function useCanvassVisits(projectId) {
     return useQuery({
         queryKey: ['canvass-visits', projectId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('canvass_visits')
-                .select('voter_id, occurred_at, outcome, persuadability_bucket, notes_snapshot, canvasser_id, voter:voter_id(full_name), canvasser:canvasser_id(full_name)')
+                .select('id, voter_id, occurred_at, outcome, persuadability_bucket, notes_snapshot, canvasser_id, voter:voter_id(full_name), canvasser:canvasser_id(full_name)')
                 .eq('project_id', projectId)
                 .order('occurred_at', { ascending: false })
                 .limit(5000);
@@ -304,6 +366,7 @@ export function useCanvassVisits(projectId) {
                 throw error;
             const rows = data;
             return rows.map((r) => ({
+                id: r.id,
                 voter_id: r.voter_id,
                 occurred_at: r.occurred_at,
                 outcome: r.outcome,

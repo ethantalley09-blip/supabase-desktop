@@ -616,17 +616,35 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   `src/features/turf/route.ts` (city/ward parsing, walk-order optimization,
   turf splitting) is unit-tested in `route.test.ts`; `useTurf.ts` re-exports
   it. Follow this split for new algorithmic code.
-- **Migrations are numbered; we're at `0032`.** Recent additions to
+- **Migrations are numbered; we're at `0036`.** Recent additions to
   `voter_records`: `contact_status` / `ballot_status` / `ballot_updated_at`
   (0017), `canvass_notes` (0018), `geocode_status` / `geocode_checked_at`
   (0028), `last_contacted_at` (0029). `canvass_visits`, an append-only visit
   log (0030); `turf_briefing_preferences`, per-user settings (0031);
   `donations.voter_id`, a nullable link back to the door a gift came from
-  (0032). New entitlement key `ai_module` and permission `ai.use` are documented in
+  (0032); `shifts` / `hotel_bookings` (0033); `campaign_scripts`, the current
+  door script + survey question list (0034); `campaign_scripts.choices` +
+  `survey_responses`, structured per-question answer capture keyed off a real
+  `canvass_visits` row (0035). `0036` is a role-template bug fix, not a new
+  table: the `Owner` template only ever had `hr.view`/`hr.manage` for the
+  `nonprofit`/`party_committee` org types, not `campaign_committee`/`pac` —
+  caught by live-signing-in as a seeded `campaign_committee` Owner for the
+  first time and finding the whole Staffing/Logistics section invisible.
+  **Lesson: a hand-patched `src/lib/supabase/types.ts` or a feature built
+  "because the permission already exists in the schema" is not verified
+  until it's actually exercised against a running local Supabase, signed in
+  as the role that's supposed to see it** — `npm run test`/`npm run build`
+  passing proves the code compiles and the pure logic is correct, not that
+  RLS/permission grants actually line up for a real org type. New
+  entitlement key `ai_module` and permission `ai.use` are documented in
   invariants #3 and #4.
-- **Always finish with** `npm run typecheck && npm run test && npm run build`;
-  after a migration also `npm run db:reset` then regen types (workflow above).
-  Verify DB-level claims with the `psql` one-liner rather than assuming.
+- **Always finish with** `npm run test && npm run build` (no `typecheck`
+  script exists anymore — see the stack note at the top); after a migration
+  also `npm run db:reset`. Verify DB-level claims with the `psql` one-liner
+  rather than assuming, and when a feature depends on a role having a
+  specific permission, verify that by querying `roles.permissions` for the
+  actual seeded org's `org_type`, not by assuming a permission "already
+  exists in the schema" therefore every relevant role has it.
 
 ## Product rules (from the owner — don't silently change)
 

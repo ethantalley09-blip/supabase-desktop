@@ -1,9 +1,10 @@
 import { Sparkles } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { useAiAssist } from '@/lib/ai/useAiAssist';
-import { useUpdateVoterNotes, useUpdateVoterStatus } from './useTurf';
+import { useCampaignScripts } from '@/features/scripts/useScripts';
+import { useLogSurveyResponses, useUpdateVoterNotes, useUpdateVoterStatus } from './useTurf';
 const CONTACT_OPTIONS = [
     { value: 'active', label: 'Active' },
     { value: 'moved', label: 'Moved' },
@@ -29,6 +30,9 @@ const MAX_NOTES_FOR_AI = 300;
 export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage, canUseAi }) {
     const updateStatus = useUpdateVoterStatus();
     const updateNotes = useUpdateVoterNotes();
+    const logSurvey = useLogSurveyResponses();
+    const { data: campaignScripts } = useCampaignScripts(projectId);
+    const activeSurveyQuestions = useMemo(() => (campaignScripts ?? []).filter((s) => s.kind === 'survey_question' && s.active), [campaignScripts]);
     const aiEnabled = useEntitlement(orgId, 'ai_module');
     const summarize = useAiAssist();
     // AI digest needs both the premium entitlement and the ai.use permission.
@@ -105,6 +109,7 @@ export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage
               <th className="px-4 py-2">Address status</th>
               <th className="px-4 py-2">Ballot</th>
               <th className="px-4 py-2">Notes</th>
+              {canManage && activeSurveyQuestions.length > 0 && <th className="px-4 py-2">Survey</th>}
             </tr>
           </thead>
           <tbody>
@@ -147,9 +152,12 @@ export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage
             // doesn't fire a network write per keystroke.
             <textarea key={v.id} rows={2} defaultValue={v.canvass_notes ?? ''} placeholder="Door notes…" className="w-full min-w-[12rem] rounded-md border border-neutral-300 px-2 py-1 text-sm" onBlur={(e) => saveNote(v, e.target.value.trim())}/>) : (<span className="text-neutral-500">{v.canvass_notes || '—'}</span>)}
                 </td>
+                {canManage && activeSurveyQuestions.length > 0 && (<td className="px-4 py-2">
+                    <SurveyCell voter={v} questions={activeSurveyQuestions} onSave={(answers) => logSurvey.mutate({ voterId: v.id, projectId, current: v, answers })} isPending={logSurvey.isPending}/>
+                  </td>)}
               </tr>))}
             {rows.length === 0 && (<tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-sm text-neutral-400">
+                <td colSpan={canManage && activeSurveyQuestions.length > 0 ? 5 : 4} className="px-4 py-6 text-center text-sm text-neutral-400">
                   No voters in view. Import voters or adjust the city/ward filter above.
                 </td>
               </tr>)}
@@ -161,6 +169,37 @@ export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage
       </div>
       {updateStatus.isError && (<p className="text-sm text-red-600">{updateStatus.error.message}</p>)}
       {updateNotes.isError && (<p className="text-sm text-red-600">{updateNotes.error.message}</p>)}
+    </div>);
+}
+// One row's worth of survey inputs, batched behind a single "Save answers"
+// button (unlike Notes' save-on-blur) since a partial submit here is a real,
+// meaningful signal — an abandoned survey — not just an intermediate typing
+// state. A select renders for a structured (choices-defined) question, plain
+// text otherwise; skipped questions simply aren't included in the answers
+// array, which is exactly what "abandoned at this question" means to
+// surveyAnalytics.js.
+function SurveyCell({ voter, questions, onSave, isPending }) {
+    const [draft, setDraft] = useState({});
+    const [savedAt, setSavedAt] = useState(null);
+    const setAnswer = (scriptId, value) => setDraft((d) => ({ ...d, [scriptId]: value }));
+    const hasAnyAnswer = Object.values(draft).some((v) => v.trim());
+    const save = () => {
+        onSave(questions.map((q) => ({ scriptId: q.id, answer: draft[q.id] ?? '' })));
+        setDraft({});
+        setSavedAt(Date.now());
+    };
+    return (<div className="space-y-1.5 min-w-[14rem]">
+      {questions.map((q) => (<div key={q.id}>
+          <label className="block text-xs text-neutral-500">{q.content}</label>
+          {q.choices && q.choices.length > 0 ? (<select className="h-8 w-full rounded-md border border-neutral-300 bg-white px-2 text-sm" value={draft[q.id] ?? ''} onChange={(e) => setAnswer(q.id, e.target.value)}>
+              <option value="">—</option>
+              {q.choices.map((c) => (<option key={c} value={c}>{c}</option>))}
+            </select>) : (<input type="text" className="h-8 w-full rounded-md border border-neutral-300 px-2 text-sm" value={draft[q.id] ?? ''} onChange={(e) => setAnswer(q.id, e.target.value)}/>)}
+        </div>))}
+      <Button size="sm" variant="outline" disabled={!hasAnyAnswer || isPending} onClick={save}>
+        Save answers
+      </Button>
+      {savedAt && !hasAnyAnswer && <span className="ml-2 text-xs text-emerald-600">Saved for {voter.full_name || 'this voter'}</span>}
     </div>);
 }
 function StatCard({ label, value, sub, tone }) {

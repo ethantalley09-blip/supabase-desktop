@@ -10,7 +10,7 @@ export function useCampaignScripts(projectId) {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('campaign_scripts')
-                .select('id, project_id, kind, content, sort_order, active')
+                .select('id, project_id, kind, content, sort_order, active, choices')
                 .eq('project_id', projectId)
                 .order('sort_order', { ascending: true });
             if (error)
@@ -30,6 +30,11 @@ export function useCreateScript() {
                 kind: input.kind,
                 content: input.content.trim(),
                 sort_order: input.sortOrder ?? 0,
+                // Only meaningful for kind='survey_question' — an omitted or
+                // empty choices list means open-ended text, same as a door
+                // script (surveyAnalytics.js treats null/empty as "not
+                // structured" and excludes it from answer-choice skew).
+                choices: input.choices && input.choices.length > 0 ? input.choices : null,
                 created_by: user.id
             });
             if (error)

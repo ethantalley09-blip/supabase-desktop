@@ -8,6 +8,9 @@ import { buildRevisitQueue } from '@/features/turf/revisitQueue';
 import { summarizeLogistics, summarizeShiftsForDate } from '@/features/staffing/staffingMath';
 import { currentDoorScript, currentSurveyQuestions } from '@/features/scripts/scriptMath';
 import { computeSurveyAbandonment, computeSurveyCompletion, mostSkewedQuestion } from '@/features/scripts/surveyAnalytics';
+import { computeEventAttendance } from '@/features/integrations/eventAttendance';
+import { computeMessagePerformance } from '@/features/integrations/messagePerformance';
+import { computePetitionSignatures, computeSignatureVelocity } from '@/features/integrations/petitionSignatures';
 const usd = (cents) => `$${Math.round(cents / 100).toLocaleString()}`;
 // ---------------------------------------------------------------------------
 // Canvassing performance (§5) — real per-canvasser production, reusing
@@ -1035,4 +1038,87 @@ export function describeContactRateDropAlert(visits, now = new Date()) {
     if (dropPts < 15)
         return null;
     return `Today's contact rate (${Math.round(todayRate * 100)}%) is ${dropPts}pt below the trailing week's average (${Math.round(priorRate * 100)}%) — worth a look.`;
+}
+// ---------------------------------------------------------------------------
+// §14-15 SMS/email performance, §17 Events, §18 Petitions — reuses the
+// integrations layer (migrations 0037/0038): Lynx never sends messages,
+// runs events, or collects petitions itself; these answers are only
+// possible once a real external tool's data has been connected.
+// ---------------------------------------------------------------------------
+export function answerMessageDeliveryRate(messageEvents) {
+    const question = 'What is our message delivery rate?';
+    const stats = computeMessagePerformance(messageEvents);
+    if (stats.length === 0) {
+        return { id: 'message_delivery_rate', question, answer: 'No connected messaging provider has reported enough real sends yet.', evidence: [] };
+    }
+    const top = stats[0];
+    return {
+        id: 'message_delivery_rate',
+        question,
+        answer: `${top.deliveryRatePct}% delivery rate on ${top.channel} (${top.sent} sent).`,
+        evidence: stats.slice(1).map((s) => `${s.channel}: ${s.deliveryRatePct}% delivery rate (${s.sent} sent)`)
+    };
+}
+export function answerMessageEngagementRate(messageEvents) {
+    const question = 'What is our email open rate, and how often do people reply?';
+    const stats = computeMessagePerformance(messageEvents).filter((s) => s.openRatePct !== null || s.replyRatePct !== null);
+    if (stats.length === 0) {
+        return { id: 'message_engagement_rate', question, answer: 'Not enough delivered messages yet to compute a real open or reply rate.', evidence: [] };
+    }
+    const top = stats[0];
+    const parts = [];
+    if (top.openRatePct !== null)
+        parts.push(`${top.openRatePct}% open rate`);
+    if (top.replyRatePct !== null)
+        parts.push(`${top.replyRatePct}% reply rate`);
+    return {
+        id: 'message_engagement_rate',
+        question,
+        answer: `On ${top.channel}: ${parts.join(', ')}.`,
+        evidence: []
+    };
+}
+export function answerEventAttendanceRate(eventRegistrations) {
+    const question = 'What is our event attendance rate?';
+    const stats = computeEventAttendance(eventRegistrations);
+    if (stats.length === 0) {
+        return { id: 'event_attendance_rate', question, answer: 'No connected events provider has reported any real registrations yet.', evidence: [] };
+    }
+    const top = stats[0];
+    return {
+        id: 'event_attendance_rate',
+        question,
+        answer: `${top.name}: ${top.attendanceRatePct}% attendance rate (${top.attended} attended of ${top.registered} registered).`,
+        evidence: stats.slice(1, 3).map((s) => `${s.name}: ${s.attendanceRatePct}% (${s.attended}/${s.registered})`)
+    };
+}
+export function answerPetitionSignatureCount(petitionSignatures) {
+    const question = 'How many petition signatures have we collected?';
+    const stats = computePetitionSignatures(petitionSignatures);
+    if (stats.length === 0) {
+        return { id: 'petition_signature_count', question, answer: 'No connected petition platform has reported any real signatures yet.', evidence: [] };
+    }
+    const total = stats.reduce((s, p) => s + p.totalSignatures, 0);
+    return {
+        id: 'petition_signature_count',
+        question,
+        answer: `${total.toLocaleString()} real signature${total === 1 ? '' : 's'} across ${stats.length} petition${stats.length === 1 ? '' : 's'}.`,
+        evidence: stats.slice(0, 3).map((p) => `${p.name}: ${p.totalSignatures}`)
+    };
+}
+export function answerPetitionVelocity(petitionSignatures, now = new Date()) {
+    const question = 'How fast are petition signatures coming in?';
+    if (petitionSignatures.length === 0) {
+        return { id: 'petition_velocity', question, answer: 'No connected petition platform has reported any real signatures yet.', evidence: [] };
+    }
+    const velocity = computeSignatureVelocity(petitionSignatures, now);
+    if (velocity.count === 0) {
+        return { id: 'petition_velocity', question, answer: 'No real signatures reported in the last 7 days.', evidence: [] };
+    }
+    return {
+        id: 'petition_velocity',
+        question,
+        answer: `${velocity.perDay} real signature${velocity.perDay === 1 ? '' : 's'}/day, based on the last 7 days (${velocity.count} total).`,
+        evidence: []
+    };
 }

@@ -19,6 +19,7 @@ const FundraisingTab = lazy(() => import('@/features/fundraising/FundraisingTab'
 const AiCenterTab = lazy(() => import('@/features/ai/AiCenterTab').then((m) => ({ default: m.AiCenterTab })));
 const TurfTab = lazy(() => import('@/features/turf/TurfTab').then((m) => ({ default: m.TurfTab })));
 const TeamTab = lazy(() => import('./tabs/TeamTab').then((m) => ({ default: m.TeamTab })));
+const IntegrationsTab = lazy(() => import('@/features/integrations/IntegrationsTab').then((m) => ({ default: m.IntegrationsTab })));
 function TabLoading() {
     return <p className="p-6 text-sm text-neutral-400">Loading…</p>;
 }
@@ -38,10 +39,16 @@ export function ProjectDetailsPage() {
     const aiEnt = useEntitlement(project?.org_id, 'ai_module');
     const canUseAi = useHasPermission(project?.org_id, 'ai.use');
     const canViewCompete = useHasPermission(project?.org_id, 'compete.view');
+    // Integrations reuses comms_paid_tier -- "analytics on an external
+    // platform's data" is exactly what that entitlement already covers for
+    // social scheduling.
+    const integrationsEnt = useEntitlement(project?.org_id, 'comms_paid_tier');
+    const canViewIntegrations = useHasPermission(project?.org_id, 'integrations.view');
     const showFundraising = Boolean(fundraisingEnt.data && canViewFundraising.data);
     const showCompliance = Boolean(complianceEnt.data && canViewCompliance.data);
     const showAi = Boolean(aiEnt.data && canUseAi.data);
     const showCompete = Boolean(canViewCompete.data);
+    const showIntegrations = Boolean(integrationsEnt.data && canViewIntegrations.data);
     // Deep link from an AI-dashboard card to its working tool: switch to the
     // hosting tab, then scroll once that tab's content has mounted. No-op if
     // the tab isn't available (e.g. fundraising module not purchased).
@@ -49,6 +56,8 @@ export function ProjectDetailsPage() {
         if (loc.tab === 'fundraising' && !showFundraising)
             return;
         if (loc.tab === 'compete' && !showCompete)
+            return;
+        if (loc.tab === 'integrations' && !showIntegrations)
             return;
         setTab(loc.tab);
         setTimeout(() => document.getElementById(loc.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
@@ -156,6 +165,9 @@ export function ProjectDetailsPage() {
             {showAi && (<Tabs.Trigger value="ai" className={tabTriggerClass}>
                 AI Center
               </Tabs.Trigger>)}
+            {showIntegrations && (<Tabs.Trigger value="integrations" className={tabTriggerClass}>
+                Integrations
+              </Tabs.Trigger>)}
             <Tabs.Trigger value="team" className={tabTriggerClass}>
               Team
             </Tabs.Trigger>
@@ -182,6 +194,9 @@ export function ProjectDetailsPage() {
             </Tabs.Content>)}
           {showAi && (<Tabs.Content value="ai">
               <AiCenterTab project={project} onOpenTool={openTool}/>
+            </Tabs.Content>)}
+          {showIntegrations && (<Tabs.Content value="integrations">
+              <IntegrationsTab project={project}/>
             </Tabs.Content>)}
           <Tabs.Content value="team">
             <TeamTab orgId={project.org_id} projectId={project.id}/>

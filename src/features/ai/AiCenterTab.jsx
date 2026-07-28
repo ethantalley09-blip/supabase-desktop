@@ -13,10 +13,11 @@ import { AiDashboard } from './AiDashboard';
 import { buildCannedAnswers } from './cannedAnswers';
 import { assessConfidence, buildFollowUpInstructions, buildScopeLine, FOLLOW_UP_PROMPTS } from './conversationContext';
 import { useAdvisorSocialPosts } from './advisorData';
-import { answerAnswerChoiceSkew, answerAvgDoorsPerCanvasserToday, answerBestContactRateTerritory, answerBestDayOfWeek, answerBestPerformingPost, answerBestTimeToKnock, answerSkipADayImpact, answerCanvasserMomentum, answerCanvasserWellbeing, answerCoachingPairs, answerCurrentDoorScript, answerCurrentSurveyQuestions, answerDonorConcentration, answerDonorGrowthVsAverageGift, answerDonorRepeatShare, answerDoorsKnockedToday, answerDoorstepAttribution, answerFundraisingPace, answerHardestTerritory, answerLodgingCost, answerNextTerritoryToCanvass, answerPaymentMethodBreakdown, answerPersuasionDrift, answerPostingFrequency, answerRevisitCandidates, answerSocialPerformance, answerSurveyAbandonment, answerSurveyCompletion, answerTeamContactRate, answerTerritorySupportBreakdown, answerTodaysContactRate, answerTodaysStaffing, answerTodayVsBaseline, answerTopCanvasser, answerTopCanvasserThisWeek, answerTopFundraiser, answerUnattemptedDoors, answerWalkbookSizeOutliers, answerWeekendVsWeekday, answerWeeklySocialReach, answerWorstContactRateTerritory, computeAverageDailyDoors, computeFundraisingPace, describeContactRateDropAlert, describeDataFreshnessAlert, describeFundraisingMomentumAlert, scenarioAdjustPace } from './advisorInsights';
+import { answerAnswerChoiceSkew, answerAvgDoorsPerCanvasserToday, answerBestContactRateTerritory, answerBestDayOfWeek, answerBestPerformingPost, answerBestTimeToKnock, answerSkipADayImpact, answerCanvasserMomentum, answerCanvasserWellbeing, answerCoachingPairs, answerCurrentDoorScript, answerCurrentSurveyQuestions, answerDonorConcentration, answerDonorGrowthVsAverageGift, answerDonorRepeatShare, answerDoorsKnockedToday, answerDoorstepAttribution, answerEventAttendanceRate, answerFundraisingPace, answerHardestTerritory, answerLodgingCost, answerMessageDeliveryRate, answerMessageEngagementRate, answerNextTerritoryToCanvass, answerPaymentMethodBreakdown, answerPersuasionDrift, answerPetitionSignatureCount, answerPetitionVelocity, answerPostingFrequency, answerRevisitCandidates, answerSocialPerformance, answerSurveyAbandonment, answerSurveyCompletion, answerTeamContactRate, answerTerritorySupportBreakdown, answerTodaysContactRate, answerTodaysStaffing, answerTodayVsBaseline, answerTopCanvasser, answerTopCanvasserThisWeek, answerTopFundraiser, answerUnattemptedDoors, answerWalkbookSizeOutliers, answerWeekendVsWeekday, answerWeeklySocialReach, answerWorstContactRateTerritory, computeAverageDailyDoors, computeFundraisingPace, describeContactRateDropAlert, describeDataFreshnessAlert, describeFundraisingMomentumAlert, scenarioAdjustPace } from './advisorInsights';
 import { quickPromptsForCategories } from './roleQuickPrompts';
 import { useHotelBookings, useShifts } from '@/features/staffing/useStaffing';
 import { useCampaignScripts, useCreateScript } from '@/features/scripts/useScripts';
+import { useEventRegistrations, useMessageEvents, usePetitionSignatures } from '@/features/integrations/useIntegrations';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
 import { CampaignCommandCenter } from './CampaignCommandCenter';
 import { ContentPack } from './ContentPack';
@@ -48,6 +49,9 @@ export function AiCenterTab({ project, onOpenTool }) {
     const { data: hotelBookings } = useHotelBookings(project.id);
     const { data: campaignScripts } = useCampaignScripts(project.id);
     const { data: surveyResponses } = useSurveyResponses(project.id);
+    const { data: integrationMessageEvents } = useMessageEvents(project.id);
+    const { data: integrationEventRegistrations } = useEventRegistrations(project.id);
+    const { data: integrationPetitionSignatures } = usePetitionSignatures(project.id);
     const canManageScripts = useHasPermission(project.org_id, 'turf.manage');
     const ask = useAiAssist();
     const coach = useAiAssist();
@@ -184,6 +188,18 @@ export function AiCenterTab({ project, onOpenTool }) {
         answerSurveyAbandonment(canvassVisits ?? [], surveyResponses ?? [], activeSurveyQuestions),
         answerAnswerChoiceSkew(surveyResponses ?? [], activeSurveyQuestions)
     ], [scriptEntries, activeSurveyQuestions, canvassVisits, surveyResponses]);
+    // §14-15 SMS/email, §17 Events, §18 Petitions — reuses the integrations
+    // layer (migration 0037/0038). Degrades to an honest "not connected yet"
+    // answer for a project without comms_paid_tier, same as every other
+    // paywalled data source in this card (RLS returns an empty set, not an
+    // error).
+    const advisorIntegrations = useMemo(() => [
+        answerMessageDeliveryRate(integrationMessageEvents ?? []),
+        answerMessageEngagementRate(integrationMessageEvents ?? []),
+        answerEventAttendanceRate(integrationEventRegistrations ?? []),
+        answerPetitionSignatureCount(integrationPetitionSignatures ?? []),
+        answerPetitionVelocity(integrationPetitionSignatures ?? [])
+    ], [integrationMessageEvents, integrationEventRegistrations, integrationPetitionSignatures]);
     const createScript = useCreateScript();
     const [newDoorScript, setNewDoorScript] = useState('');
     const [newSurveyQuestion, setNewSurveyQuestion] = useState('');
@@ -323,7 +339,7 @@ export function AiCenterTab({ project, onOpenTool }) {
         {dataFreshnessAlert && (<p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">{dataFreshnessAlert}</p>)}
         {contactRateDropAlert && (<p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">{contactRateDropAlert}</p>)}
         <div className="space-y-2">
-          {[...advisorCanvassing, ...advisorTurf, ...advisorSocial, ...advisorFundraising, ...advisorStaffing, ...advisorScripts].map((a) => (<div key={a.id} className="rounded-md border border-neutral-200 bg-neutral-50 p-2.5">
+          {[...advisorCanvassing, ...advisorTurf, ...advisorSocial, ...advisorFundraising, ...advisorStaffing, ...advisorScripts, ...advisorIntegrations].map((a) => (<div key={a.id} className="rounded-md border border-neutral-200 bg-neutral-50 p-2.5">
               <p className="text-xs font-medium text-neutral-900">{a.question}</p>
               <p className="text-xs text-neutral-700">{a.answer}</p>
               {a.evidence.length > 0 && <p className="text-xs text-neutral-400">{a.evidence.join(' · ')}</p>}

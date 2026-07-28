@@ -616,7 +616,14 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   `src/features/turf/route.ts` (city/ward parsing, walk-order optimization,
   turf splitting) is unit-tested in `route.test.ts`; `useTurf.ts` re-exports
   it. Follow this split for new algorithmic code.
-- **Migrations are numbered; we're at `0036`.** Recent additions to
+- **Migrations are numbered; we're at `0038`.** `0037`/`0038` add the generic
+  Integrations layer (`integration_connectors`, write-only `integration_secrets`,
+  `message_events`/`event_registrations`/`petition_signatures`) — see
+  `IntegrationsTab.jsx` and `supabase/functions/integrations-webhook`/
+  `integrations-sync`. It reuses `comms_paid_tier` rather than a new
+  entitlement key, and new `integrations.view`/`integrations.manage`
+  permissions were granted to Owner+Manager for all 4 org types from the
+  start (unlike `hr.view`'s original gap, fixed in `0036`). Recent additions to
   `voter_records`: `contact_status` / `ballot_status` / `ballot_updated_at`
   (0017), `canvass_notes` (0018), `geocode_status` / `geocode_checked_at`
   (0028), `last_contacted_at` (0029). `canvass_visits`, an append-only visit

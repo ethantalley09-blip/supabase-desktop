@@ -57,7 +57,11 @@ export const TOOL_REGISTRY = [
     { id: 'debate_prep', label: 'Debate Prep', description: '5 likely attacks with honest responses + pivots.', category: 'compete', requires: ['compete.view'] },
     { id: 'red_team', label: 'Red Team', description: 'Attack your own record before the opponent does.', category: 'compete', requires: ['compete.view'] },
     { id: 'mistake_response', label: 'Mistake Response', description: 'Honest accountability statement for a real candidate mistake.', category: 'compete', requires: ['compete.view'] },
-    { id: 'interview_prep', label: 'Interview Prep', description: 'Prep for a friendly local interview, not a debate.', category: 'compete', requires: ['compete.view'] }
+    { id: 'interview_prep', label: 'Interview Prep', description: 'Prep for a friendly local interview, not a debate.', category: 'compete', requires: ['compete.view'] },
+    // Integrations — connects real external tools (SMS/email, events,
+    // petitions) via webhook or API poll; category 'integrations' matches
+    // the tab name 1:1, so no TOOL_LOCATIONS exception needed.
+    { id: 'integrations', label: 'Integrations', description: 'Connect Twilio/SendGrid-class messaging, event registration, and petition platforms — message performance, event attendance, and signature stats from real external data.', category: 'integrations', requires: ['integrations.view'] }
 ];
 export const TOOL_LOCATIONS = Object.fromEntries(TOOL_REGISTRY.map((t) => {
     // A handful of tools render on the AI Center or Turf page even though
@@ -85,7 +89,7 @@ export function isToolVisible(toolId, permissions, hasAiModule) {
     return filterTools(permissions, hasAiModule).some((t) => t.id === toolId);
 }
 export function toolsByCategory(tools) {
-    const grouped = { general: [], turf: [], comms: [], fundraising: [], compete: [] };
+    const grouped = { general: [], turf: [], comms: [], fundraising: [], compete: [], integrations: [] };
     for (const tool of tools)
         grouped[tool.category].push(tool);
     return grouped;

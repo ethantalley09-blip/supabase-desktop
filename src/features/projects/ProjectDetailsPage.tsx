@@ -208,7 +208,7 @@ export function ProjectDetailsPage() {
             </Tabs.Content>
           )}
           <Tabs.Content value="team">
-            <TeamTab orgId={project.org_id} />
+            <TeamTab orgId={project.org_id} projectId={project.id} />
           </Tabs.Content>
           </Suspense>
         </Tabs.Root>

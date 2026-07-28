@@ -25,6 +25,7 @@ export type ToolDefinition = {
 export const TOOL_REGISTRY: ToolDefinition[] = [
   // AI Center — general
   { id: 'ask_data', label: 'Ask your data', description: 'Plain-English Q&A over voter and fundraising totals.', category: 'general', requires: [] },
+  { id: 'advisor_insights', label: 'Advisor Insights', description: 'Canvassing performance, territory rankings, fundraising pace, social reach, and scenario planning — all from real logged data.', category: 'general', requires: [] },
   { id: 'campaign_coach', label: 'Campaign Coach', description: 'Your top 3 priorities right now.', category: 'general', requires: [] },
   { id: 'message_studio', label: 'Message Studio', description: 'Draft broadcasts, scripts, and personal texts.', category: 'comms', requires: [] },
   { id: 'content_pack', label: 'Content Pack', description: 'One brief -> email/text/script/social set.', category: 'comms', requires: ['comms.manage'] },
@@ -101,7 +102,7 @@ export const TOOL_LOCATIONS: Record<string, ToolLocation> = Object.fromEntries(
     // ('turf'/'comms'/'fundraising'/'compete' match 1:1) — so a newly added
     // comms/fundraising/compete tool routes correctly with zero extra wiring.
     const tab: ToolLocation['tab'] =
-      ['ask_data', 'campaign_coach', 'message_studio', 'content_pack', 'smart_segments'].includes(t.id)
+      ['ask_data', 'advisor_insights', 'campaign_coach', 'message_studio', 'content_pack', 'smart_segments'].includes(t.id)
         ? 'ai'
         : ['field_coach', 'note_digest', 'import_mapping', 'doorstep_donations', 'geocode_coach'].includes(t.id)
           ? 'turf'

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useProfile } from '@/features/auth/useProfile';
 import { OrgCreateWizard } from '@/features/orgs/OrgCreateWizard';
 import { PendingInvites } from '@/features/orgs/PendingInvites';
-import { OrgDashboard } from '@/features/dashboard/widgets';
+import { OrgDashboard, ProjectAttentionRollup } from '@/features/dashboard/widgets';
 import { useMyOrganizations, type Organization } from '@/features/orgs/useOrganizations';
 import { ProjectCreateForm } from '@/features/projects/ProjectCreateForm';
 import { useOrgProjects } from '@/features/projects/useProjects';
@@ -74,6 +74,7 @@ export function HomePage() {
                 {org.status === 'active' && (
                   <>
                     <OrgDashboard orgId={org.id} />
+                    <ProjectAttentionRollup orgId={org.id} />
                     <OrgProjects org={org} />
                   </>
                 )}

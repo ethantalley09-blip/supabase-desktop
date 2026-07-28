@@ -385,6 +385,163 @@ export type Database = {
           },
         ]
       }
+      campaign_scripts: {
+        Row: {
+          active: boolean
+          content: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          project_id: string
+          sort_order: number
+        }
+        Insert: {
+          active?: boolean
+          content: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          project_id: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          content?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          project_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_scripts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_scripts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_bookings: {
+        Row: {
+          check_in: string
+          check_out: string
+          created_at: string
+          created_by: string
+          hotel_name: string
+          id: string
+          nightly_rate_cents: number
+          project_id: string
+          room_count: number
+          team_name: string | null
+        }
+        Insert: {
+          check_in: string
+          check_out: string
+          created_at?: string
+          created_by: string
+          hotel_name: string
+          id?: string
+          nightly_rate_cents?: number
+          project_id: string
+          room_count?: number
+          team_name?: string | null
+        }
+        Update: {
+          check_in?: string
+          check_out?: string
+          created_at?: string
+          created_by?: string
+          hotel_name?: string
+          id?: string
+          nightly_rate_cents?: number
+          project_id?: string
+          room_count?: number
+          team_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_bookings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hotel_bookings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shifts: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          profile_id: string
+          project_id: string
+          shift_date: string
+          status: string
+          team_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          profile_id: string
+          project_id: string
+          shift_date: string
+          status?: string
+          team_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          profile_id?: string
+          project_id?: string
+          shift_date?: string
+          status?: string
+          team_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       donor_churn_risk: {
         Row: {
           created_at: string | null

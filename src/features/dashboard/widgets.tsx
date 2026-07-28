@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { formatUsd } from '@/features/fundraising/useFundraising';
+import { useOrgProjects } from '@/features/projects/useProjects';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
 import { supabase } from '@/lib/supabase/client';
+import { rankProjectsByAttention, rankProjectsByFundraising } from './projectRollup';
 
 // Org-scoped dashboard widgets. Each renders only if the viewer's role has
 // the matching permission -- the same widget set assembles differently for
@@ -100,6 +103,77 @@ export function OrgDashboard({ orgId }: { orgId: string }) {
   if (widgets.length === 0) return null;
 
   return <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">{widgets}</div>;
+}
+
+// Advisor rollup (question-bank §23, "which project needs the most
+// attention"): the one multi-project question that's honestly answerable
+// without a new host surface — HomePage already lists every project an
+// Owner/Manager can see. Cheap head-count queries per project (same pattern
+// OrgDashboard already uses), never a prediction, just an explainable
+// ranking (rankProjectsByAttention in projectRollup.ts, unit-tested). Only
+// renders with 2+ projects — nothing to "roll up" with just one.
+export function ProjectAttentionRollup({ orgId }: { orgId: string }) {
+  const canManage = useHasPermission(orgId, 'projects.manage');
+  const { data: projects } = useOrgProjects(orgId);
+
+  const { data: rows } = useQuery({
+    queryKey: ['project-attention-rollup', orgId, (projects ?? []).map((p) => p.id).join(',')],
+    queryFn: async () => {
+      const list = projects ?? [];
+      return Promise.all(
+        list.map(async (p) => {
+          const [total, mapped, donations] = await Promise.all([
+            supabase.from('voter_records').select('id', { count: 'exact', head: true }).eq('project_id', p.id),
+            supabase
+              .from('voter_records')
+              .select('id', { count: 'exact', head: true })
+              .eq('project_id', p.id)
+              .not('lat', 'is', null),
+            supabase.from('donations').select('amount_cents').eq('project_id', p.id)
+          ]);
+          return {
+            projectId: p.id,
+            name: p.name,
+            totalVoters: total.count ?? 0,
+            mappedVoters: mapped.count ?? 0,
+            raisedCents: (donations.data ?? []).reduce((sum, d) => sum + d.amount_cents, 0)
+          };
+        })
+      );
+    },
+    enabled: Boolean(canManage.data && projects && projects.length > 1)
+  });
+
+  const ranked = useMemo(() => rankProjectsByAttention(rows ?? []), [rows]);
+  const byFundraising = useMemo(() => rankProjectsByFundraising(rows ?? []), [rows]);
+  if (!canManage.data || ranked.length < 2) return null;
+
+  const top = ranked[0];
+  const topFundraiser = byFundraising[0];
+  return (
+    <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Advisor: needs attention</p>
+      <p className="mt-1 text-sm text-neutral-800">
+        <strong>{top.name}</strong> — {top.unmappedVoters.toLocaleString()} voter{top.unmappedVoters === 1 ? '' : 's'} still
+        unmapped
+        {top.raisedCents === 0 ? ', no donations recorded yet' : `, ${formatUsd(top.raisedCents)} raised`}.
+      </p>
+      {topFundraiser.raisedCents > 0 && (
+        <p className="mt-1 text-xs text-neutral-600">
+          Strongest fundraising pace: <strong>{topFundraiser.name}</strong> ({formatUsd(topFundraiser.raisedCents)} raised).
+        </p>
+      )}
+      {ranked.length > 1 && (
+        <ul className="mt-2 space-y-0.5 text-xs text-neutral-500">
+          {ranked.slice(1, 4).map((r) => (
+            <li key={r.projectId}>
+              {r.name}: {r.mappedRatePct}% mapped, {formatUsd(r.raisedCents)} raised
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 // Cross-org, read-only rollups for the SuperAdmin dashboard.

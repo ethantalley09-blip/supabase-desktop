@@ -1080,6 +1080,65 @@ FastAPI and into git.
   as excluding `index/`. Verified `.env`/`chat_history.db`/`index/` were
   actually absent from `git status`'s untracked list before staging.
   Initial commit: 50 files, root commit `bebc3d5`.
+- **Lynx integration** (mid-round follow-up): owner asked for this to be
+  "plugged into Lynx," the real React/JS + Supabase platform this project
+  has always sat next to but never connected to. Lynx's own AI system has
+  one established pattern (`supabase/functions/ai-assist/index.js`): every
+  AI call goes through one Deno edge function so the Anthropic key never
+  reaches the browser, and org membership + the `ai_module` entitlement
+  are checked server-side on every call. A standalone Python service
+  doesn't fit that pattern directly, so -- after confirming the approach
+  with the owner rather than guessing -- built a proxy: Lynx's React
+  frontend calls a new `rag-chatbot-proxy` edge function (same
+  auth/entitlement checks as `ai-assist`, copied from the real file, not
+  reconstructed from memory), which does a server-to-server call to this
+  service's `/chat` endpoint. Two things landed on the Python side to
+  support this:
+  - `RAG_API_KEY` (new, `api.py`): this service went from "local demo
+    only" to "called by a real external server" the moment this was
+    asked for -- CORS is a browser-enforced mechanism and does nothing
+    against a direct server-to-server call, so it was never real
+    protection for this new caller. Every route except `/health` now
+    requires a matching `X-API-Key` header when `RAG_API_KEY` is set;
+    unset (plain local dev) skips auth entirely, same graceful-
+    degradation pattern as every other optional feature in this app.
+    Verified live: no key → 401, wrong key → 401, `/health` → still 200
+    with no key, correct key → the full real pipeline runs end-to-end
+    (real answer, sources, verification, groundedness, follow-ups).
+  - `CORS_ORIGINS` was already read by `api.py` (Round 14's first pass)
+    but never actually added to `.env.example` -- a real gap, caught and
+    fixed alongside adding `RAG_API_KEY`.
+  - `rag-chatbot-proxy/index.js` (new, in the Lynx repo, not this one):
+    verifies the JWT, checks `org_memberships` is active, checks
+    `ai_module` via the same `has_entitlement` RPC every other AI feature
+    uses, then forwards `{question, conversation_id}` to
+    `RAG_API_URL`/chat with the shared secret. Reuses `ai_module` rather
+    than inventing a new entitlement key -- this genuinely is an AI
+    feature from the org's point of view. Passed a Node `--check` syntax
+    validation (Deno wasn't available in this session to run it for
+    real). **Not live-verified**: no local Supabase instance was running
+    in this session, so the actual JWT/membership/entitlement path
+    through the edge function was never exercised end-to-end -- only the
+    Python side of the integration (the half this project owns) was.
+    Before trusting this in Lynx, run it against a real local Supabase
+    (`npm run db:start && npm run db:reset && npm run seed`), sign in as
+    a seeded user whose org has `ai_module`, and confirm a real call
+    round-trips.
+  - `src/lib/ai/useRagChatbot.js` (new, in the Lynx repo): a client hook
+    mirroring `useAiAssist.js`'s exact shape (same error-unwrapping
+    logic), calling `supabase.functions.invoke('rag-chatbot-proxy', ...)`.
+    Not wired into any actual UI component yet -- no specific page/tab
+    was asked for, so this is the connective hook only. A real usage site
+    would additionally need to gate on `useEntitlement(org,'ai_module')`
+    + `useHasPermission(org,'ai.use')` client-side, same as every other
+    AI surface in Lynx, before rendering anything that calls it.
+  - Deliberately did NOT stream through the proxy (the Python service's
+    own `/chat/stream` SSE endpoint exists but isn't proxied) -- kept the
+    edge function's shape identical to `ai-assist`'s proven non-streaming
+    request/response pattern rather than introducing streaming-through-
+    Deno as a second new thing in the same round. Worth revisiting if the
+    live tool-call progress / token streaming turns out to matter for
+    this specific UI.
 
 ## What's verified vs. not
 

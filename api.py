@@ -14,6 +14,15 @@ conversation started here and continued through the Streamlit UI (or
 vice versa) shares the same history (same conversation_id, same
 chat_history.db).
 
+Round 14 (Lynx integration): protected with a shared-secret header
+(RAG_API_KEY) once this stopped being a local-only demo and started
+being called by a real external server (Lynx's `rag-chatbot-proxy`
+Supabase edge function, server-to-server) -- CORS alone is a browser-
+enforced mechanism and does nothing to stop a direct server-to-server
+call, so it was never real protection for this use case. When
+RAG_API_KEY is unset (plain local dev), auth is skipped entirely rather
+than silently locking out `python ingest.py`-then-`curl` testing.
+
 Run with:
     uvicorn api:app --reload --port 8000
 """
@@ -24,7 +33,7 @@ from contextlib import asynccontextmanager
 
 import anthropic
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -37,6 +46,18 @@ load_dotenv()
 
 _retriever: HybridRetriever | None = None
 _client: anthropic.Anthropic | None = None
+
+RAG_API_KEY = os.environ.get("RAG_API_KEY", "").strip()
+
+
+async def require_api_key(x_api_key: str | None = Header(default=None)):
+    """No-op when RAG_API_KEY isn't set (local dev, matches every other
+    module in this app's "degrades gracefully without a key" pattern).
+    Once set, every protected route requires a matching X-API-Key header
+    -- /health stays open regardless, since it leaks nothing sensitive.
+    """
+    if RAG_API_KEY and x_api_key != RAG_API_KEY:
+        raise HTTPException(401, "Missing or invalid X-API-Key header")
 
 
 @asynccontextmanager
@@ -118,12 +139,12 @@ def health():
     return {"status": "ok", "index_loaded": _retriever is not None}
 
 
-@app.post("/conversations")
+@app.post("/conversations", dependencies=[Depends(require_api_key)])
 def create_conversation():
     return {"conversation_id": storage.new_conversation()}
 
 
-@app.get("/conversations/{conversation_id}")
+@app.get("/conversations/{conversation_id}", dependencies=[Depends(require_api_key)])
 def get_conversation(conversation_id: str):
     messages = storage.load_conversation_messages(conversation_id)
     if not messages:
@@ -134,7 +155,7 @@ def get_conversation(conversation_id: str):
     }
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_api_key)])
 def chat(req: ChatRequest):
     """Non-streaming: runs the full agentic pipeline and returns the
     complete answer as one JSON response once it's done. Persists both
@@ -163,7 +184,7 @@ def chat(req: ChatRequest):
     )
 
 
-@app.post("/chat/stream")
+@app.post("/chat/stream", dependencies=[Depends(require_api_key)])
 def chat_stream(req: ChatRequest):
     """Streaming (Server-Sent Events): mirrors app.py's live tool-call
     progress + token-by-token text over plain HTTP instead of Streamlit's

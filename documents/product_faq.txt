@@ -1,0 +1,34 @@
+Aurora Robotics — SkyNav Product FAQ
+
+What is SkyNav?
+SkyNav is Aurora Robotics' autonomous drone navigation platform. It ships
+as an SDK that integrates with third-party drone hardware to provide
+GPS-denied indoor navigation using visual-inertial odometry.
+
+What pricing tiers are available?
+- Starter: $199/month, up to 5 drones, community support only.
+- Professional: $899/month, up to 50 drones, includes 24/5 email support
+  and a dedicated Slack channel.
+- Enterprise: custom pricing, unlimited drones, 24/7 phone support with a
+  30-minute response SLA, and an assigned solutions engineer.
+
+What hardware does SkyNav support?
+SkyNav officially supports the DJI Matrice 300, the Skydio X2, and any
+PX4-based flight controller running firmware 1.13 or later. Support for
+ArduPilot-based systems is in closed beta as of this FAQ's publication.
+
+How accurate is the indoor positioning?
+Under standard test conditions (well-lit warehouse, moderate texture on
+surfaces), SkyNav achieves positioning accuracy within 8 centimeters.
+Accuracy degrades in low-light or texture-poor environments (e.g. plain
+white walls), where drift can reach 30-40 centimeters over a 100-meter
+flight path without periodic re-localization.
+
+Is there a free trial?
+Yes. All new accounts get a 14-day trial of the Professional tier with a
+hard cap of 2 drones. No credit card is required to start the trial.
+
+What is the cancellation policy?
+Subscriptions can be cancelled at any time from the billing portal.
+Cancellation takes effect at the end of the current billing cycle; Aurora
+Robotics does not offer prorated refunds for partial months.

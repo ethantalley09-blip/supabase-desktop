@@ -296,6 +296,47 @@ issue question, an accumulated unanswerable question, or an aged
 document — that this session's short-lived demo data didn't happen to
 produce).
 
+## FastAPI backend (Round 14)
+
+`api.py` is a real HTTP API in front of the exact same agentic pipeline
+`app.py`'s Streamlit UI uses — same `HybridRetriever`, same Anthropic
+client, same `storage.py` SQLite persistence, same `rag_chain
+.answer_question_stream()` loop. It exists because Streamlit can only
+ever render as its own full page (the reason Round 10's embeddable widget
+has to iframe a whole Streamlit session rather than just calling an API)
+— this gives any real frontend a proper JSON/SSE API to call instead.
+
+```bash
+uvicorn api:app --reload --port 8000
+```
+
+- `POST /conversations` — start a new conversation, returns
+  `{conversation_id}`.
+- `POST /chat` — `{question, conversation_id?, donor_id?}` → the complete
+  answer as one JSON response once the full pipeline finishes (sources,
+  verification, groundedness, follow-ups).
+- `POST /chat/stream` — same request shape, Server-Sent Events response:
+  one JSON-encoded event per `data:` line, same event shapes
+  `rag_chain.answer_question_stream()` already documents
+  (`intent`/`cache_hit`/`turn_start`/`tool_call`/`tool_result`/
+  `text_delta`/`done`) plus a `type` field so a client can dispatch on it.
+- `GET /conversations/{id}` — replay a conversation's message history.
+- `GET /health` — readiness check.
+
+A conversation started through the API and continued through the
+Streamlit UI (or vice versa) shares the same history — both write to the
+same `chat_history.db` via the same `storage.py` functions. `CORS_ORIGINS`
+(comma-separated, defaults to `*`) restricts which origins can call it —
+tighten this before a real deployment, the same cross-origin concern
+`widget/widget.js`'s iframe embedding already documents. Requires
+`index/` to already be built (`python ingest.py`) before startup, same
+requirement as `app.py`.
+
+**Verified live**: real `/health`, `/conversations`, `/chat`, and
+`/chat/stream` requests against the real running server, the real index,
+and the real Claude API — see HANDOFF.md's Round 14 section for the exact
+responses.
+
 ## Architecture
 
 ```

@@ -1,28 +1,44 @@
 # RAG Chatbot — Handoff
 
-Location: `rag_chatbot/` — **not git-tracked** (the parent folder is a git
-repo for an unrelated project, Lynx; this directory has always been
-untracked inside it, `git status` shows it as `??`). Nothing here has been
-committed anywhere. Delivered to the owner as a zip three times so far,
-most recently after the Vectorize/streaming round below.
+Location: `rag_chatbot/` — **its own standalone git repo as of Round 14**
+(`git init` run inside this directory specifically, root commit
+`bebc3d5`). It sits inside the Lynx repo's working tree by accident of
+directory structure (Lynx and this project are unrelated), but is
+deliberately NOT commingled with Lynx's own git history -- Lynx's own
+`git status` treats the nested `.git` as an opaque repo boundary and
+shows `rag_chatbot/` as a single untracked entry rather than descending
+into it. Delivered to the owner as a zip three times before that, most
+recently after the Vectorize/streaming round below.
 
 ## ⚡ Resume here
 
-**Nothing in this app has ever been run against a real Claude API call.**
-Every round was built and verified via mocked Claude responses (unit-level
-control-flow tests) plus live checks of everything that doesn't need an
-API key (retrieval pipeline, Streamlit UI shell, SQLite persistence layer,
-the calculator's safety). No `ANTHROPIC_API_KEY` was available in the dev
-environment at any point.
+**A real `ANTHROPIC_API_KEY` has been set since Round 9** and every round
+from 9 onward includes real, live-verified output against the actual
+Claude API, not just mocked responses -- see each round's own "Verified
+live" paragraph below for exactly what was checked. `Rounds` 1-8 were
+built and verified via mocked Claude responses (unit-level control-flow
+tests) plus live checks of everything that doesn't need an API key
+(retrieval pipeline, Streamlit UI shell, SQLite persistence layer, the
+calculator's safety) -- their own real-API output was later confirmed
+retroactively where noted.
 
-To actually use it:
+**As of Round 14, there are two ways to run this app, both against the
+same `chat_history.db`:**
 ```bash
 cd rag_chatbot
 pip install -r requirements.txt
 cp .env.example .env        # paste in a real ANTHROPIC_API_KEY
-python ingest.py            # builds index/ from documents/ (ships with 3 samples)
-streamlit run app.py
+python ingest.py            # builds index/ from documents/ (8 documents, 81 chunks)
+streamlit run app.py        # the full UI: chat + Dashboard + Donor Stewardship + Compete
+# -- or, for a real HTTP API instead of/alongside the Streamlit UI --
+uvicorn api:app --reload --port 8000
 ```
+On this dev box specifically, launch either one with `HF_HUB_OFFLINE=1`
+set if launching manually outside `.claude/launch.json` (which already
+sets it) -- see Round 14's note below on why: this environment's path to
+the Hugging Face Hub metadata endpoint is flaky enough to stall a cold
+start indefinitely without it.
+
 Then run the specific test sequence in README.md's "What's verified vs.
 not" section — it's written as an actual checklist (one doc, two docs,
 follow-up, out-of-scope, math question), not just "try it out."
@@ -990,6 +1006,81 @@ suggestions, staff digest) reads correctly on inspection; the Round 13
 voter-info feature (built and then removed earlier in this session per
 owner request) left no trace in code, `documents/`, or the index.
 
+**Round 14 — speed, a real HTTP API, and git.** Owner asked for the
+chatbot to be faster, then (mid-turn) asked for it to be plugged into
+FastAPI and into git.
+
+- **Performance**: `verification.py` was the one internal-check module
+  still defaulting to the expensive main-answer model (`ANTHROPIC_MODEL`,
+  `claude-opus-4-8`) instead of a cheap/fast one, unlike every other
+  background check (`intent.py`, `memory.py`, `followups.py`,
+  `query_rewrite.py`, `escalation.py`'s summary) which already default to
+  Haiku via their own `<PURPOSE>_MODEL` env var. Verification runs on the
+  direct critical path of every single turn -- it blocks the final answer
+  from rendering until it completes -- so this was a real, measurable
+  latency cost on every turn, not a one-off. Added `VERIFICATION_MODEL`
+  (defaults to `claude-haiku-4-5-20251001`) and switched `verify_answer`
+  to use it. Measured directly against the real API (4 trials each, same
+  real answer/excerpt pair, to average out network jitter): Haiku averaged
+  **1.15s** (trials 1.74/0.83/1.11/0.93s), Opus averaged **1.90s** (trials
+  1.28/2.29/1.39/2.64s) -- roughly 40% faster on the one call that gates
+  every answer's render, same verdict (`supported`) both times, no
+  accuracy tradeoff observed.
+- **FastAPI backend** (`api.py`, new): a real JSON/SSE HTTP API in front
+  of the unchanged agentic pipeline -- `/health`, `POST /conversations`,
+  `POST /chat` (full JSON response), `POST /chat/stream` (Server-Sent
+  Events, same event shapes `answer_question_stream()` already yields
+  plus a `type` field), `GET /conversations/{id}`. Reuses the same
+  `HybridRetriever`, `anthropic.Anthropic` client, and `storage.py`
+  persistence as `app.py` -- zero new AI logic, a transport layer only,
+  and a conversation started via the API and continued through the
+  Streamlit UI (or vice versa) shares the same history via the same
+  `chat_history.db`. Built specifically because Streamlit can only ever
+  render as its own full page (the reason Round 10's widget has to iframe
+  a whole Streamlit session instead of just calling an API) -- this is
+  the real fix for that limitation, the iframe workaround remains but a
+  real integration no longer has to use it. Added `fastapi` and
+  `uvicorn[standard]` to `requirements.txt`. **Verified live**, all
+  against the real running server/index/API: `GET /health` → real
+  `{"status": "ok", "index_loaded": true}`; `POST /conversations` → a
+  real new conversation id; `POST /chat` asking the internet-stipend
+  question → the same real, correctly-cited answer (real sources, real
+  `verify_answer` verdict via the new Haiku default, real groundedness
+  check with 0 ungrounded sentences, real follow-ups); `POST /chat/stream`
+  asking a follow-up question on the SAME conversation → real SSE events
+  in order (`conversation_id`, `intent`, `turn_start`, `text_delta`s, a
+  real `tool_call`/`tool_result` for `query_documents`, more
+  `text_delta`s, `done`); `GET /conversations/{id}` → all 4 real messages
+  from both calls, in order, confirming the API and the Streamlit UI
+  genuinely share one `chat_history.db`; a real 404 on an unknown
+  conversation id; and FastAPI's auto-generated `/docs` page serving.
+- **A real operational snag hit getting the API server running in this
+  session, not a code bug**: the first launch attempt was backgrounded
+  incorrectly (`&` inside an already-backgrounded shell command) and left
+  an orphaned process that silently died without binding the port; the
+  second attempt raced that same dead process's lingering port-8000
+  listener state; the third attempt (a single, correctly-backgrounded
+  launch) then stalled indefinitely with completely flat memory usage --
+  the exact same known Hugging Face Hub metadata-endpoint flakiness
+  Round 7 already hit and fixed for the Streamlit launch.json entry via
+  `HF_HUB_OFFLINE=1`, just not set for this manual `uvicorn` invocation.
+  Fixed by launching with `HF_HUB_OFFLINE=1` set explicitly. Worth adding
+  to `api.py`'s own run instructions or a `.env` default so this doesn't
+  have to be rediscovered.
+- **Git**: this project had never been committed anywhere (see the top
+  "Resume here" note's history). Initialized a **standalone git repo
+  scoped to `rag_chatbot/` itself** (`git init` inside this directory),
+  not commingled with the unrelated parent Lynx repo it happens to sit
+  inside -- keeps this project's history clean and avoids polluting
+  Lynx's, and Lynx's own `git status` correctly treats the nested `.git`
+  as an opaque repo boundary (still shows `rag_chatbot/` as one untracked
+  entry, doesn't descend into it). Extended the existing `.gitignore`
+  (already had `.env`, `index/`, `__pycache__/`, `*.pyc`, venvs) to also
+  exclude `chat_history.db` -- runtime state, not source, same reasoning
+  as excluding `index/`. Verified `.env`/`chat_history.db`/`index/` were
+  actually absent from `git status`'s untracked list before staging.
+  Initial commit: 50 files, root commit `bebc3d5`.
+
 ## What's verified vs. not
 
 Full checklist in `README.md`. Short version: everything that doesn't
@@ -1092,6 +1183,9 @@ rag_chatbot/
 ├── app.py                      Streamlit chat UI + on/off toggle + document summaries +
 │                                follow-up chips + intent/cache-hit status + Round 9's
 │                                donor selector + donation-ask amount chips
+├── api.py                      Round 14: FastAPI JSON/SSE HTTP API in front of the same
+│                                pipeline app.py uses -- /health, /conversations, /chat,
+│                                /chat/stream. Zero new AI logic, transport layer only.
 └── pages/
     ├── 1_Dashboard.py           observability + cache stats + Round 9's Compliance and
     │                            Lead Qualification sections
@@ -1294,3 +1388,30 @@ rather than a plain `streamlit run` command.
     same category of prompt-level-only guardrail as item 16 above. Worth
     watching real "Simpler"/"More detail" rewrites for drift once used
     heavily.
+24. `api.py` has no authentication or rate limiting at all -- fine for
+    local development, not for a public deployment. Same "no auth
+    anywhere in this app" gap that already applies to the Streamlit
+    Dashboard (real conversation content, escalations, donor data), now
+    also true of a real HTTP API surface. Close this before exposing
+    either publicly.
+25. `CORS_ORIGINS` defaults to `*` in `api.py` -- fine for local testing
+    against the widget/a local frontend, needs tightening to the actual
+    embedding site(s) before a real deployment, mirroring the same
+    cross-origin concern `widget/widget.js`'s iframe embedding already
+    documents (Round 10).
+26. Consider whether `widget/widget.js` should be updated to call
+    `api.py`'s `/chat/stream` directly (a real streamed JSON response)
+    instead of iframing a whole Streamlit session -- now that a real API
+    exists, the iframe approach is no longer the only option, just the
+    one that existed first. Not done this round since it wasn't asked
+    for and changes the widget's whole rendering model (would need its
+    own chat UI in JS instead of just embedding Streamlit's).
+27. If further speed matters beyond the verification-model fix, the next
+    lever is running `verify_answer` and `suggest_followups` concurrently
+    instead of sequentially in `rag_chain.answer_question_stream` -- both
+    are independent Claude calls that only need the final answer text and
+    sources, not each other's output. Not done this round: it would
+    introduce threading into a generator-based streaming architecture
+    that currently has none, a bigger structural change than the
+    single-line model swap that was the actual bottleneck found this
+    round.

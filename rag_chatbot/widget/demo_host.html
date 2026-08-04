@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Demo host page (not part of the chatbot itself)</title>
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    max-width: 720px;
+    margin: 64px auto;
+    padding: 0 24px;
+    color: #1a1a1a;
+    line-height: 1.6;
+  }
+  h1 { margin-bottom: 4px; }
+  .badge {
+    display: inline-block;
+    background: #f0eefe;
+    color: #635bff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 24px;
+  }
+  code {
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #1a1a1a;
+    color: #f5f5f5;
+    padding: 16px 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+
+<span class="badge">DEMO HOST PAGE</span>
+<h1>Dana Reyes for State Senate</h1>
+<p>
+  This page stands in for a real campaign's actual website — the point is
+  that <strong>everything on this page except the chat bubble in the
+  bottom-right corner</strong> is ordinary, unrelated site content. The
+  bubble and the panel it opens are the entire embed footprint.
+</p>
+<p>
+  A real site would drop this at the bottom of its own HTML, right before
+  <code>&lt;/body&gt;</code>:
+</p>
+<pre>&lt;script
+  src="widget.js"
+  data-chat-url="http://localhost:8501"
+  data-color="#635bff"
+&gt;&lt;/script&gt;</pre>
+<p>
+  <code>data-chat-url</code> is the only thing that changes between sites
+  — it's wherever the actual Streamlit app (<code>app.py</code>) ends up
+  deployed. Everything else — position, color, open/close behavior — is
+  handled by <code>widget.js</code> alone; the host page needs zero other
+  code or CSS.
+</p>
+
+<script src="widget.js" data-chat-url="http://localhost:8501" data-color="#635bff"></script>
+</body>
+</html>

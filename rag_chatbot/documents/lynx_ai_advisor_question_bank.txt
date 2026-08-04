@@ -1,0 +1,726 @@
+# Lynx AI Campaign Advisor
+## Comprehensive Question Bank and Capability Map
+
+This question bank is designed for a project-aware campaign advisor inside Lynx. It is not a list of canned responses. Each question represents an intent the advisor should understand, translate into the appropriate data query or analysis, and answer with project-specific evidence.
+
+## 1. What the advisor should do
+
+The advisor should be able to answer four increasingly valuable kinds of questions:
+
+1. Describe: What happened?
+2. Diagnose: Why did it happen?
+3. Forecast: What is likely to happen next?
+4. Recommend: What should the campaign do about it?
+
+The best answers will often combine all four. For example:
+
+"You are projected to finish 18,400 doors short at the current seven-day pace. The shortfall is driven primarily by low staffing on Tuesdays and lower production in Turf 14. Adding three average-performing canvassers to Tuesday shifts, or reallocating two teams from Turf 8 after Thursday, would put the project within 3% of goal. Confidence: moderate, because only 11 production days are available."
+
+## 2. Readiness legend
+
+- Now: Answerable from data represented in the supplied Lynx project screens.
+- Derived: Requires calculations, historical comparisons, attribution, anomaly detection, or joining data already or naturally stored by Lynx.
+- Integration: Requires a new source, module, or external integration.
+- Guarded: Requires careful permissions, privacy controls, compliance rules, or human review.
+
+## 3. Executive and campaign-health questions
+
+1. [Now] How is this project doing overall?
+2. [Now] Give me a plain-English summary of the project.
+3. [Now] What are the five numbers I need to know today?
+4. [Derived] Is the campaign healthy, at risk, or off track?
+5. [Derived] What changed most since yesterday?
+6. [Derived] What changed most over the past seven days?
+7. [Derived] What is going better than expected?
+8. [Derived] What is going worse than expected?
+9. [Derived] What needs my attention right now?
+10. [Derived] What can safely wait until later?
+11. [Derived] What are the three highest-impact actions we can take today?
+12. [Derived] What is the biggest constraint on this project right now?
+13. [Derived] Are we using our people and money efficiently?
+14. [Derived] Where are we ahead of plan?
+15. [Derived] Where are we behind plan?
+16. [Derived] What are our biggest operational risks?
+17. [Derived] What are our biggest strategic opportunities?
+18. [Derived] What has the campaign accomplished this week?
+19. [Derived] Compare this week with last week.
+20. [Derived] Compare actual performance with the campaign plan.
+21. [Derived] What assumptions in our plan no longer appear valid?
+22. [Derived] If we continue exactly as we are, where will we finish?
+23. [Derived] What should the campaign manager discuss in the morning briefing?
+24. [Derived] Create an end-of-day executive recap.
+25. [Derived] What decisions need to be made before tomorrow?
+
+## 4. Goals, pace, and forecasting
+
+1. [Now] How many doors remain?
+2. [Now] What percentage of the door goal is complete?
+3. [Derived] Are we on pace to reach the door goal by the deadline?
+4. [Derived] On what date will we reach the goal at our current pace?
+5. [Derived] How many doors per day do we need from now on?
+6. [Derived] How many doors per canvasser per day do we need?
+7. [Derived] What is our seven-day rolling production average?
+8. [Derived] Is production accelerating or slowing down?
+9. [Derived] How much buffer do we have before the deadline?
+10. [Derived] How many bad-weather or low-production days can we absorb?
+11. [Derived] How far behind would we fall if we lost one field day?
+12. [Derived] What daily pace would give us a 10% safety margin?
+13. [Derived] What is the probability that we hit the goal?
+14. [Derived] What is the best-case, expected, and worst-case finish?
+15. [Derived] What must be true for us to finish on time?
+16. [Derived] When did we first fall behind pace?
+17. [Derived] How much of the gap is caused by staffing versus productivity?
+18. [Derived] Are we overproducing in a way that could let us finish early?
+19. [Derived] Could we reduce staffing and still meet the goal?
+20. [Derived] What is the smallest operational change that puts us back on pace?
+
+## 5. Canvassing performance
+
+1. [Now] How many doors did we knock today?
+2. [Now] What was today's contact rate?
+3. [Now] How many surveys did we complete?
+4. [Now] What was the average number of doors per canvasser?
+5. [Now] Who were the top canvassers today?
+6. [Derived] Who has been the top canvasser this week?
+7. [Derived] Who is consistently exceeding goal?
+8. [Derived] Who is consistently missing goal?
+9. [Derived] Which canvassers are improving fastest?
+10. [Derived] Which canvassers are losing momentum?
+11. [Derived] Who has the highest contact rate?
+12. [Derived] Who completes the most surveys per contact?
+13. [Derived] Who is knocking a lot of doors but producing few contacts?
+14. [Derived] Who is producing good conversations despite lower door volume?
+15. [Derived] Is low performance caused by the canvasser, the turf, the shift, or the weather?
+16. [Derived] Which teams are most productive?
+17. [Derived] Which team has the strongest contact rate?
+18. [Derived] What time of day produces the most contacts?
+19. [Derived] What day of the week produces the best results?
+20. [Derived] How does weekend canvassing compare with weekday canvassing?
+21. [Derived] Are longer shifts actually producing more doors per hour?
+22. [Derived] What is the average production per labor hour?
+23. [Derived] Where are we seeing signs of fatigue?
+24. [Derived] Are breaks, travel time, or late starts reducing production?
+25. [Derived] Which canvassers should be paired for coaching?
+26. [Derived] Who is ready to become a team lead?
+27. [Guarded] Who may need a performance conversation, and what evidence supports it?
+28. [Derived] What should tomorrow's individual goals be?
+29. [Derived] How unusual was today's performance?
+30. [Derived] Was today's production increase real, or mostly caused by more staff?
+
+## 6. Contact quality, persuasion, and voter movement
+
+1. [Derived] How many meaningful voter contacts did we make?
+2. [Derived] What percentage of contacts completed the survey?
+3. [Derived] What percentage of contacts were supporters, undecided, opposed, or unreachable?
+4. [Derived] How many undecided voters moved toward us after contact?
+5. [Derived] Which survey answers are most associated with support?
+6. [Derived] Which issues are persuading undecided voters?
+7. [Derived] Which issues are creating opposition?
+8. [Derived] What are voters mentioning most often?
+9. [Derived] What objections are canvassers hearing most often?
+10. [Derived] Which objections do we answer poorly?
+11. [Derived] Where is support strongest?
+12. [Derived] Where is opposition strongest?
+13. [Derived] Where are the largest persuadable audiences?
+14. [Derived] Which voters should receive a follow-up?
+15. [Guarded] Which voters should not be contacted again?
+16. [Derived] How many supporters have committed to vote?
+17. [Derived] How many supporters need a ride, absentee-ballot help, or election reminders?
+18. [Derived] How many contacts became volunteers, donors, petition signers, or event attendees?
+19. [Derived] Are repeated contacts improving support or causing fatigue?
+20. [Derived] What is the most important thing we learned from voters this week?
+
+## 7. Turf, geography, and targeting
+
+1. [Derived] Which turfs are complete, in progress, unassigned, or stalled?
+2. [Derived] Which turf should we canvass next?
+3. [Derived] Which turf has the highest contact rate?
+4. [Derived] Which turf has the lowest contact rate?
+5. [Derived] Which turf is producing the most supporters?
+6. [Derived] Which turf is producing the most undecided voters?
+7. [Derived] Which turf is underperforming after controlling for staff and hours?
+8. [Derived] Are we spending too much time in low-value turf?
+9. [Derived] Which unfinished turf has the greatest strategic value?
+10. [Derived] Where are we leaving high-priority voters untouched?
+11. [Derived] Which precincts should receive another pass?
+12. [Derived] Which precincts have reached diminishing returns?
+13. [Derived] Where should we send our strongest canvassers?
+14. [Derived] How should tomorrow's staff be allocated across turfs?
+15. [Derived] Can we consolidate routes to reduce drive time?
+16. [Derived] Which walkbooks are too large or too small?
+17. [Derived] Which walkbooks are taking longer than expected?
+18. [Derived] Are there gaps or overlaps in turf assignments?
+19. [Derived] Which doors have not been attempted?
+20. [Derived] Which doors should be reattempted, and when?
+21. [Derived] Where do contact results conflict with voter-file assumptions?
+22. [Derived] Show me geographic hotspots for support, opposition, and undecided voters.
+23. [Integration] How do our results compare with turnout history in these precincts?
+24. [Integration] How do demographic or Census characteristics relate to our results?
+25. [Integration] How should weather, travel time, daylight, and polling location affect deployment?
+
+## 8. Survey and script effectiveness
+
+1. [Now] What questions are in the current survey?
+2. [Now] What is the current door script?
+3. [Derived] Which survey questions have the highest completion rate?
+4. [Derived] Where do respondents abandon the survey?
+5. [Derived] Which questions create confusion?
+6. [Derived] Which questions produce low-quality or inconsistent data?
+7. [Derived] Are canvassers skipping any questions?
+8. [Derived] Which answer choices are being overused?
+9. [Derived] Do survey results differ significantly by turf?
+10. [Derived] Do survey results differ significantly by canvasser?
+11. [Derived] Does the script improve contact-to-survey conversion?
+12. [Derived] Which script version performs best?
+13. [Derived] Does a shorter script improve completion without reducing useful information?
+14. [Derived] Which opening line produces the most conversations?
+15. [Derived] Which issue order produces the strongest response?
+16. [Derived] What should we change in the script based on this week's voter feedback?
+17. [Derived] Draft a better response to the most common objection.
+18. [Derived] Are any questions leading, biased, duplicative, or ambiguous?
+19. [Guarded] Does the survey collect sensitive information we do not need?
+20. [Derived] What new question would produce the most useful strategic information?
+
+## 9. Staffing and scheduling
+
+1. [Now] Who is scheduled today?
+2. [Now] Who is working, off, or pending?
+3. [Now] What shift requests are awaiting a decision?
+4. [Now] Which teams are staffed today?
+5. [Derived] Do we have enough staff to hit today's goal?
+6. [Derived] Do we have enough staff to hit the project goal?
+7. [Derived] How many additional canvassers do we need?
+8. [Derived] Which days are understaffed?
+9. [Derived] Which shifts are overstaffed?
+10. [Derived] What is the projected production of tomorrow's scheduled roster?
+11. [Derived] Who is available but not scheduled?
+12. [Derived] Who has worked too many consecutive days?
+13. [Derived] Who is approaching overtime?
+14. [Derived] Where are we vulnerable to call-offs?
+15. [Derived] Which shift-change requests can be approved without jeopardizing goals?
+16. [Derived] What happens to production if I approve this day-off request?
+17. [Derived] Build the most efficient schedule for next week.
+18. [Derived] Balance the schedule for performance, fairness, and labor cost.
+19. [Derived] Which teams need another manager or team lead?
+20. [Derived] Are manager-to-canvasser ratios appropriate?
+21. [Derived] Who should cover an open shift?
+22. [Derived] Which staff should be reassigned between teams?
+23. [Derived] Which new hires need training before field deployment?
+24. [Derived] What should each team's quota be tomorrow?
+25. [Guarded] Are there scheduling patterns that could create labor-law or policy risk?
+
+## 10. Coaching, quality assurance, and safety
+
+1. [Derived] Which canvassers need coaching today?
+2. [Derived] What specific coaching should each person receive?
+3. [Derived] Which canvassers have unusual location or production patterns?
+4. [Derived] Are any door attempts occurring far from assigned addresses?
+5. [Derived] Are any canvassers recording impossible travel or production speeds?
+6. [Derived] Are survey responses being entered suspiciously fast?
+7. [Derived] Are there duplicate, fabricated, or low-quality records?
+8. [Derived] Which canvassers have unusually high "not home" rates?
+9. [Derived] Which canvassers have unusually low survey completion?
+10. [Derived] Are quality problems isolated or team-wide?
+11. [Derived] Which records need manager review?
+12. [Derived] What evidence supports this QA alert?
+13. [Derived] Could this alert be explained by GPS error, apartment density, or offline syncing?
+14. [Derived] What is the fairest next step before escalating an alert?
+15. [Guarded] Are there any unresolved staff safety incidents?
+16. [Integration] Which turfs have elevated safety concerns?
+17. [Integration] Is severe weather likely to make tomorrow's field plan unsafe?
+18. [Derived] Who has failed to check in or end a shift?
+19. [Derived] Are any staff devices failing to sync?
+20. [Guarded] What information can this user see about another employee?
+
+## 11. Logistics and travel
+
+1. [Now] What hotel is each team using?
+2. [Now] What are the check-in and check-out dates?
+3. [Now] How many rooms are booked?
+4. [Now] What is the nightly room rate?
+5. [Derived] What is the projected hotel cost for this project?
+6. [Derived] Are there enough rooms for the scheduled staff?
+7. [Derived] Are any staff missing room assignments?
+8. [Derived] Are we paying for rooms after staff depart?
+9. [Derived] Are hotel dates aligned with work schedules?
+10. [Derived] Could consolidating hotels reduce costs or travel time?
+11. [Derived] Which hotel is closer to assigned turf?
+12. [Derived] What transportation or vehicle capacity do we need tomorrow?
+13. [Derived] Are any staff scheduled without lodging or transportation?
+14. [Derived] What logistics issue is most likely to disrupt field production?
+15. [Integration] Are lower-cost suitable hotels available nearby?
+16. [Integration] How will traffic affect tomorrow's launch time?
+17. [Integration] Where should the staging location be?
+18. [Derived] What is the estimated cost per productive field hour after travel?
+19. [Derived] How much production are we losing to travel time?
+20. [Derived] Give me tomorrow's logistics briefing.
+
+## 12. Fundraising performance
+
+1. [Now] How much have we raised?
+2. [Now] What percentage of the fundraising goal is complete?
+3. [Now] How many donors do we have?
+4. [Now] What is the average donation?
+5. [Now] Who are the top fundraisers?
+6. [Now] Which fundraising sources are producing the most money?
+7. [Derived] Are we on pace to reach the fundraising goal by the deadline?
+8. [Derived] How much do we need to raise per day or week?
+9. [Derived] What is our expected fundraising total at the current pace?
+10. [Derived] What changed in fundraising performance this week?
+11. [Derived] Is the donor count growing even if the average gift is falling?
+12. [Derived] Are we relying too heavily on a small number of donors?
+13. [Derived] What percentage of revenue comes from first-time donors?
+14. [Derived] What percentage comes from recurring or repeat donors?
+15. [Derived] Which donors are likely to give again?
+16. [Derived] Which lapsed donors should receive follow-up?
+17. [Derived] Which donor segments have the highest response rate?
+18. [Derived] Which acquisition source produces the highest-value donors?
+19. [Derived] Which acquisition source produces the best return on cost?
+20. [Derived] What is the donor conversion rate from canvassing?
+21. [Derived] What is the donor conversion rate from SMS, email, events, and social?
+22. [Derived] Which fundraiser is best at acquiring new donors?
+23. [Derived] Which fundraiser is best at retaining donors?
+24. [Derived] What is our cost per dollar raised?
+25. [Derived] What should our next fundraising push target?
+26. [Derived] What ask amount should we use for each donor segment?
+27. [Derived] When is the best time to send the next fundraising appeal?
+28. [Derived] Why did donations spike or fall on a particular day?
+29. [Derived] Which message produced the most donations, not merely clicks?
+30. [Derived] What is the highest-impact fundraising action we can take this week?
+
+## 13. Campaign-finance compliance
+
+These answers should use current jurisdiction-specific rules, show the rule source and effective date, and distinguish informational guidance from legal advice.
+
+1. [Now/Guarded] Which donor records have active compliance flags?
+2. [Now/Guarded] Which donors are at or near their applicable contribution limit?
+3. [Guarded] Why was this contribution blocked?
+4. [Guarded] How much may this donor still contribute for this election?
+5. [Guarded] Which contributions need employer or occupation information?
+6. [Guarded] Which donor records are incomplete?
+7. [Guarded] Are there apparent duplicate donors that should be aggregated?
+8. [Guarded] Are any contributions potentially excessive, prohibited, or misattributed?
+9. [Guarded] Are any refunds, redesignations, or reattributions approaching a deadline?
+10. [Guarded] Which donations require treasurer review?
+11. [Guarded] Which filing is due next?
+12. [Guarded] What reporting period does it cover?
+13. [Guarded] What information is missing before the filing can be prepared?
+14. [Guarded] Reconcile the filing totals with the fundraising ledger.
+15. [Guarded] Explain why the dashboard and filing totals differ.
+16. [Guarded] Which transactions changed after the reporting cutoff?
+17. [Integration/Guarded] What federal, Pennsylvania, or Texas rule applies here?
+18. [Integration/Guarded] Has the applicable contribution limit or filing rule changed?
+19. [Guarded] What should the treasurer review before submission?
+20. [Guarded] Produce an audit trail for this compliance determination.
+
+## 14. SMS, email, push, and calling performance
+
+1. [Now] How many messages did we send this week?
+2. [Now] What is the delivery rate by channel?
+3. [Now] What is the reply, open, click, listen, and opt-out rate?
+4. [Now] Which campaign produced the most conversions?
+5. [Derived] Which channel is performing best for this objective?
+6. [Derived] Which channel is underperforming?
+7. [Derived] Is performance improving or declining?
+8. [Derived] Which audience segment responds best to SMS?
+9. [Derived] Which audience segment responds best to email?
+10. [Derived] Which subject line produced the best open rate?
+11. [Derived] Which call to action produced the best conversion rate?
+12. [Derived] Which message generated replies but few useful conversions?
+13. [Derived] Which send generated the most opt-outs?
+14. [Derived] Why did delivery fall for this campaign?
+15. [Derived] Are carrier filtering or invalid numbers affecting delivery?
+16. [Derived] What is the best time and day to send?
+17. [Derived] How often can we contact this audience before fatigue appears?
+18. [Derived] Are we contacting the same people too often across channels?
+19. [Derived] Which contacts should be suppressed from the next send?
+20. [Derived] Should we use SMS, email, push, or calling for this goal?
+21. [Derived] How many conversions should we expect from the scheduled campaign?
+22. [Derived] What size audience is needed to generate 500 signups?
+23. [Derived] What did the last blast cost per delivered message and per conversion?
+24. [Derived] Did the robocall increase event attendance or voter contact?
+25. [Guarded] Are consent, opt-out, quiet-hour, and registration requirements satisfied?
+
+## 15. Messaging and content strategy
+
+1. [Derived] What message is resonating most strongly?
+2. [Derived] What message is underperforming?
+3. [Derived] Which issue generates the most engagement?
+4. [Derived] Which issue generates the most donations?
+5. [Derived] Which issue persuades undecided voters?
+6. [Derived] Which audience responds best to each message?
+7. [Derived] Are our messages consistent across field, SMS, email, social, and press?
+8. [Derived] Where is the campaign's message becoming diluted or contradictory?
+9. [Derived] What language from voter conversations should appear in campaign messaging?
+10. [Derived] What are the most common objections or attacks?
+11. [Derived] Draft three responses to the top voter objection.
+12. [Derived] Rewrite this message for supporters, undecided voters, donors, volunteers, or press.
+13. [Derived] Make this message shorter without losing the core point.
+14. [Derived] Create an A/B test for this message.
+15. [Derived] What should the campaign test next?
+16. [Derived] Predict which version is more likely to convert and explain why.
+17. [Derived] Does this draft have a clear ask?
+18. [Derived] Does this draft match the campaign's established voice?
+19. [Guarded] Does this draft make a factual claim that needs verification?
+20. [Guarded] Does this communication require a disclaimer, consent check, or human approval?
+
+## 16. Social media, press, and earned media
+
+1. [Now] What was our total social reach this week?
+2. [Now] Which platform generated the most impressions?
+3. [Now] What is the average engagement rate?
+4. [Now] How many followers did we gain?
+5. [Now] How many media mentions did we receive?
+6. [Now] What is the estimated reach and sentiment of coverage?
+7. [Derived] Which post performed best, and why?
+8. [Derived] Which platform performs best for donations, signups, and event attendance?
+9. [Derived] What topics drive the strongest engagement?
+10. [Derived] What content format performs best on each platform?
+11. [Derived] Are we posting too often or not often enough?
+12. [Derived] What should we post today based on campaign activity?
+13. [Derived] Turn today's field results into a social post.
+14. [Derived] Which scheduled posts should be revised based on new developments?
+15. [Derived] Which media mention presents the greatest opportunity?
+16. [Derived] Which negative story needs a response?
+17. [Derived] Is negative coverage spreading or contained?
+18. [Derived] Which reporters or outlets cover us most often?
+19. [Integration] Which reporters are likely to cover this announcement?
+20. [Integration] What relevant stories or narratives are developing externally?
+21. [Derived] What is our share of voice compared with the opposition?
+22. [Derived] Did press coverage increase web traffic, donations, signups, or support?
+23. [Derived] What should the next press release focus on?
+24. [Derived] Draft a press release from this project milestone.
+25. [Guarded] Which statements in this press draft require factual or legal review?
+
+## 17. Events
+
+1. [Integration] Which upcoming events need attention?
+2. [Integration] Are registrations on pace for the attendance goal?
+3. [Integration] How many registrants are likely to attend?
+4. [Integration] Which outreach source produced the most registrations?
+5. [Integration] Which event produced the most volunteers, donors, petition signers, or supporters?
+6. [Integration] What is the cost per attendee and cost per conversion?
+7. [Integration] Which audience should receive the next invitation?
+8. [Integration] When should reminders be sent?
+9. [Integration] How many staff and volunteers are needed?
+10. [Integration] Are venue capacity, accessibility, permits, insurance, and security covered?
+11. [Integration] What materials and equipment are still needed?
+12. [Integration] Is weather likely to affect the event?
+13. [Integration] Which attendees should receive follow-up?
+14. [Integration] What did attendees say in post-event surveys?
+15. [Integration] Should we repeat this event format or location?
+16. [Integration] Which fairs, rallies, town halls, or tabling opportunities should we prioritize?
+17. [Integration] What is the expected strategic value of this event?
+18. [Integration] Give me an event-day briefing.
+19. [Integration] Give me a post-event performance report.
+20. [Integration] What should we change before the next event?
+
+## 18. Nominating petitions and signature collection
+
+1. [Integration/Guarded] How many signatures have we collected?
+2. [Integration/Guarded] How many valid signatures are likely to remain after review?
+3. [Integration/Guarded] What safety margin do we have above the legal minimum?
+4. [Integration/Guarded] Are we on pace to meet the filing deadline?
+5. [Integration/Guarded] How many signatures per day do we still need?
+6. [Integration/Guarded] Which circulators are collecting the most signatures?
+7. [Integration/Guarded] Which circulators have the highest estimated validity rate?
+8. [Integration/Guarded] Which signatures require manual review?
+9. [Integration/Guarded] Which records appear duplicated?
+10. [Integration/Guarded] Which signers may be outside the required district or party?
+11. [Integration/Guarded] Which petition sheets have missing or inconsistent fields?
+12. [Integration/Guarded] Which circulator affidavits are incomplete?
+13. [Integration/Guarded] Are any captured signatures or transposed records legally unusable?
+14. [Integration/Guarded] Where should circulators be deployed next?
+15. [Integration/Guarded] Which locations produce the highest valid-signature yield?
+16. [Integration/Guarded] How many circulators do we need to reach the target safely?
+17. [Integration/Guarded] What is the best-case, expected, and conservative valid-signature count?
+18. [Integration/Guarded] What statutory requirement or current court ruling controls this answer?
+19. [Integration/Guarded] What needs to be corrected before the petition is printed or filed?
+20. [Integration/Guarded] Produce a manager review queue without making the final legal-validity determination.
+
+## 19. Cross-channel attribution and strategy
+
+1. [Derived] Which activities are actually moving the campaign toward its goal?
+2. [Derived] How do canvassing, communications, fundraising, events, and earned media reinforce one another?
+3. [Derived] Which channel produces the most supporters per dollar?
+4. [Derived] Which channel produces the most donors per dollar?
+5. [Derived] Which channel produces the most volunteers per dollar?
+6. [Derived] Which channel produces the strongest downstream conversion?
+7. [Derived] Did canvassing make people more likely to open or respond to later messages?
+8. [Derived] Did SMS follow-up improve canvassing conversions?
+9. [Derived] Did media coverage improve fundraising or volunteer signups?
+10. [Derived] Did an event improve support in the surrounding turf?
+11. [Derived] What was the sequence of touches before a person converted?
+12. [Derived] What is the best next action for each contact segment?
+13. [Derived] Where are we duplicating effort across teams?
+14. [Derived] Which campaign activities should receive more resources?
+15. [Derived] Which activities should be reduced or stopped?
+16. [Derived] What is the opportunity cost of adding staff to field instead of phones?
+17. [Derived] What mix of field, digital, fundraising, and events is most likely to hit the goal?
+18. [Derived] Which objective is currently limiting the rest of the campaign?
+19. [Derived] What is the next-best action if our preferred strategy is unavailable?
+20. [Derived] What evidence would change your recommendation?
+
+## 20. Scenario planning and "what if" questions
+
+1. [Derived] What happens if we add two canvassers?
+2. [Derived] What happens if we lose two canvassers?
+3. [Derived] What happens if productivity drops by 10%?
+4. [Derived] What happens if contact rate rises by three points?
+5. [Derived] What happens if we move staff from Turf A to Turf B?
+6. [Derived] What happens if we skip one day of canvassing?
+7. [Derived] What happens if the deadline moves forward one week?
+8. [Derived] What happens if the fundraising pace stays flat?
+9. [Derived] What happens if the next email performs like the last one?
+10. [Derived] What happens if we increase SMS volume by 25%?
+11. [Derived] What happens if the opt-out rate doubles?
+12. [Derived] What happens if we shift money from robocalls to SMS?
+13. [Derived] What happens if we focus only on high-propensity supporters?
+14. [Derived] What happens if we add a second pass to undecided-heavy precincts?
+15. [Derived] What happens if bad weather cuts field production in half tomorrow?
+16. [Derived] What happens if an event draws only 60% of registrants?
+17. [Derived] What happens if 15% of petition signatures are invalid?
+18. [Derived] What is the cheapest way to reach the target?
+19. [Derived] What is the fastest way to reach the target?
+20. [Derived] What is the lowest-risk plan to reach the target?
+
+## 21. Alerts, anomalies, and exceptions
+
+1. [Derived] What is unusual today?
+2. [Derived] Which metric changed outside its normal range?
+3. [Derived] Why did production suddenly fall?
+4. [Derived] Why did contact rate rise while door volume fell?
+5. [Derived] Why did survey completions fall despite more contacts?
+6. [Derived] Why did fundraising spike?
+7. [Derived] Why did email delivery or engagement drop?
+8. [Derived] Why did opt-outs increase?
+9. [Derived] Which turf, team, staff member, message, or data issue explains the change?
+10. [Derived] Is this a one-day fluctuation or a meaningful trend?
+11. [Derived] Are any scheduled activities missing an owner?
+12. [Derived] Are any important tasks overdue?
+13. [Derived] Are any live projects unstaffed?
+14. [Derived] Are any deadlines at risk?
+15. [Derived] Are any compliance issues unresolved?
+16. [Derived] Are any integrations failing or data feeds stale?
+17. [Derived] When was each data source last updated?
+18. [Derived] What should trigger an immediate notification?
+19. [Derived] Which alerts can be grouped or suppressed as noise?
+20. [Derived] What action would resolve this alert?
+
+## 22. Data quality and trust
+
+1. [Derived] How complete is the data for this project?
+2. [Derived] What data is missing?
+3. [Derived] Which metrics are based on incomplete or stale data?
+4. [Derived] When was this answer's data last updated?
+5. [Derived] Which records failed to sync?
+6. [Derived] Are there duplicate contacts, donors, staff, shifts, or transactions?
+7. [Derived] Are addresses valid and geocoded?
+8. [Derived] Which records have conflicting values?
+9. [Derived] Did a schema or tracking change affect this trend?
+10. [Derived] Are we comparing equivalent time periods?
+11. [Derived] Is the sample size large enough to trust this conclusion?
+12. [Derived] How confident are you in this forecast?
+13. [Derived] Which assumptions did you use?
+14. [Derived] Show the calculation behind this number.
+15. [Derived] Show the records or aggregates supporting this conclusion.
+16. [Derived] What alternative explanations did you consider?
+17. [Derived] What data would make this recommendation more reliable?
+18. [Derived] Did you infer anything that is not directly recorded?
+19. [Derived] Could selection bias be affecting this result?
+20. [Guarded] Does this answer expose personal data the current user should not see?
+
+## 23. Multi-project and organization-level questions
+
+1. [Derived] Which active project needs the most attention?
+2. [Derived] Which projects are on pace and which are behind?
+3. [Derived] Which project is using staff most efficiently?
+4. [Derived] Which project has the greatest staffing shortage?
+5. [Derived] Which project has the strongest contact rate?
+6. [Derived] Which project has the strongest fundraising pace?
+7. [Derived] Which project has unresolved compliance issues?
+8. [Derived] Where should we reallocate staff across projects?
+9. [Derived] Which project should receive the next available manager?
+10. [Derived] Which projects are competing for the same staff, donors, or contacts?
+11. [Derived] Are there reusable messages, scripts, or survey questions performing well elsewhere?
+12. [Derived] Compare similar projects on normalized metrics.
+13. [Derived] Which project is an outlier, and why?
+14. [Derived] What has the organization accomplished this week?
+15. [Derived] Create a state-director or executive rollup.
+16. [Derived] Which completed project is the best benchmark for this one?
+17. [Derived] What did we learn from completed projects that should change this plan?
+18. [Derived] Which live project is most likely to miss its deadline?
+19. [Derived] What organization-wide risk is emerging?
+20. [Guarded] What information may be shared across client organizations?
+
+## 24. Role-specific quick questions
+
+### Candidate or executive
+
+- What do I need to know before my next meeting?
+- Are we winning the week?
+- What should I personally focus on today?
+- What result can I credibly communicate publicly?
+- Where would my time have the greatest impact?
+
+### Campaign manager
+
+- What are today's priorities?
+- What is most likely to derail the plan?
+- Which decision has the greatest leverage?
+- What should each department accomplish by end of day?
+- Give me a concise morning and evening briefing.
+
+### Field director
+
+- Are we staffed to hit goal?
+- Where should I deploy each team?
+- Who needs coaching?
+- Which turf should be cut, expanded, or revisited?
+- What is the most likely production total by end of shift?
+
+### Finance director or treasurer
+
+- Are we on pace to goal?
+- Which donor segments should we target?
+- What compliance items need review?
+- What is due next, and what data is missing?
+- Reconcile deposits, transactions, and filing totals.
+
+### Communications director
+
+- What message is working?
+- Which channel should we use for this objective?
+- What should we publish today?
+- What needs a rapid response?
+- How did communications affect donations, signups, or voter movement?
+
+### Canvasser or volunteer
+
+- What is my assignment?
+- What is my goal?
+- Where do I launch?
+- What should I know about this turf?
+- How am I doing compared with my own recent average?
+
+The advisor should avoid exposing private peer rankings, HR notes, donor details, or organization-wide strategy to users who lack permission.
+
+## 25. Follow-up questions the advisor should understand
+
+The system must preserve conversational context so users can drill down naturally:
+
+- Why?
+- Compared with what?
+- Show me the last seven days.
+- Break that down by team.
+- Break that down by turf.
+- Exclude today.
+- Use only completed shifts.
+- What about weekends?
+- Who contributed most to that change?
+- Is that statistically meaningful?
+- How confident are you?
+- Show your math.
+- What data are you missing?
+- What would change your recommendation?
+- Give me the conservative version.
+- What is the cheapest alternative?
+- What is the fastest alternative?
+- Turn that into tomorrow's plan.
+- Summarize that for the candidate.
+- Explain it as if I have 30 seconds.
+
+## 26. Recommended answer contract
+
+Every substantive answer should contain:
+
+1. Direct answer: One or two sentences answering the actual question.
+2. Scope: Project, audience, geography, and date range used.
+3. Evidence: The most relevant metrics, comparisons, and records.
+4. Interpretation: Why the result matters.
+5. Recommendation: A specific next step when the user asks for guidance.
+6. Expected impact: A quantified range when the data supports one.
+7. Confidence: High, moderate, or low, with the reason.
+8. Caveat: Missing, stale, incomplete, or externally sourced data.
+9. Drill-down: One or two relevant follow-up options.
+10. Action boundary: Ask for confirmation before changing schedules, sending communications, filing reports, reassigning turf, or affecting a person.
+
+## 27. Essential behavior and safety rules
+
+- Never invent campaign data, legal requirements, benchmarks, or causal explanations.
+- Separate observed facts, calculated results, predictions, and recommendations.
+- Use the current user's role and project access before retrieving or revealing data.
+- Minimize exposure of voter, donor, staff, signature, and location-level personal information.
+- Do not turn productivity analytics into an automatic disciplinary decision.
+- Treat QA flags as indicators requiring review, not proof of misconduct.
+- For legal and compliance questions, use current jurisdiction-specific sources and show their effective dates.
+- Do not make a final determination about petition-signature validity or campaign-finance legality without an authorized human reviewer.
+- Identify small samples, missing baselines, stale syncs, or confounding factors.
+- When asked "why," distinguish correlation from causation.
+- When the user asks for a recommendation, explain the tradeoff and the evidence that would change it.
+- Require explicit confirmation before any external or irreversible action.
+
+## 28. Suggested implementation priorities
+
+### Phase 1: Trustworthy project analyst
+
+Build first around the data already represented in Lynx:
+
+- Project health and daily briefings
+- Goal pace and completion forecasts
+- Canvassing production and contact rates
+- Staff scheduling and projected capacity
+- Fundraising pace and source performance
+- Communications performance by channel
+- Active compliance flags and filing dates
+- Data freshness, evidence, and calculation display
+
+### Phase 2: Operational strategist
+
+Add:
+
+- Turf-level analysis and staff allocation
+- Individual and team trends
+- Survey and script effectiveness
+- Cross-channel conversion attribution
+- Scenario planning
+- Anomaly detection
+- Cost and resource optimization
+- Multi-project executive rollups
+
+### Phase 3: Connected campaign intelligence
+
+Add with integrations and specialized review:
+
+- Voter-file and turnout history
+- Weather, traffic, mapping, and safety signals
+- Social listening and media monitoring
+- Events
+- Pennsylvania nominating petitions
+- Current federal and state compliance sources
+- Competitive intelligence and external developments
+
+## 29. Minimum evaluation set
+
+Before release, test the advisor against at least these representative prompts:
+
+1. Are we on pace to hit our door goal?
+2. Why did production fall yesterday?
+3. How many canvassers do we need tomorrow?
+4. Which turf should we work next?
+5. Who needs coaching, and why?
+6. What is the most important thing voters told us this week?
+7. Are we on pace to hit our fundraising goal?
+8. Which fundraising source is most efficient?
+9. Which donors or transactions need compliance review?
+10. Which message generated the most real conversions?
+11. Are we contacting people too often?
+12. What are the campaign's three biggest risks?
+13. What happens if we lose one field day?
+14. Show your math and tell me how confident you are.
+15. What data are you missing?
+16. Give me a 30-second candidate briefing.
+17. Compare this week with last week.
+18. What should we stop doing?
+19. What should we do first tomorrow?
+20. What evidence would change your recommendation?

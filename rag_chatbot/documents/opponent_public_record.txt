@@ -1,0 +1,35 @@
+Public Record: State Senator Tom Whitfield (FICTIONAL EXAMPLE — incumbent opponent)
+Compiled from public sources only
+
+NOTE: This document is entirely fictional, written for demo/testing
+purposes. "Tom Whitfield" is not a real person. In a real campaign, every
+entry in a document like this must be an actual public record (a floor
+vote, a public statement, a public filing) with its real source and date
+— never a private fact, never a personal-life detail, and never something
+inferred rather than directly on the record. This file models that
+discipline with invented placeholder entries.
+
+Voting record (fictional state senate floor votes):
+- 2024-03-14: Voted against SB 118 (statewide broadband expansion grant
+  program). Source: State Senate floor vote record, roll call #118-24.
+- 2024-06-02: Voted for HB 402 (increasing the state's rainy-day fund
+  threshold). Source: State Senate floor vote record, roll call #402-24.
+- 2025-01-22: Voted against SB 47 (small-business licensing fee
+  reduction). Source: State Senate floor vote record, roll call #47-25.
+
+Public statements (fictional):
+- 2024-09-10, campaign press release: "I've always supported responsible
+  budgeting for this district first and foremost."
+- 2025-02-18, local newspaper op-ed (Riverside Gazette): stated support
+  for "phasing in broadband funding once the state budget allows it."
+
+Public filings (fictional):
+- 2025-04-01: Campaign finance disclosure filed with the state elections
+  board showing a lifetime-to-date raised total for the current cycle.
+
+Usage guidance for any AI-assisted analysis of this file: contrast an
+opponent's record with our own on the ISSUES only; never extend a quote
+beyond what's actually recorded; truth-sandwich any rebuttal (state the
+real fact, correct the record, restate our own position); never invent a
+scandal or infer anything about the opponent's personal life, family, or
+private conduct that isn't itself a public record.

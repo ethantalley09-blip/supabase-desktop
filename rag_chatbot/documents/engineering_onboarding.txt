@@ -1,0 +1,37 @@
+Aurora Robotics — Engineering Onboarding Guide
+
+1. Development Environment Setup
+New engineers should install the `aurora-cli` tool via `pip install
+aurora-cli`, then run `aurora-cli setup` which provisions a local
+simulation environment (Gazebo-based) and pulls the latest SkyNav SDK
+container image. Setup typically takes 25-40 minutes depending on network
+speed, most of which is downloading the ~6GB simulation assets bundle.
+
+2. Repository Structure
+The main monorepo is split into three top-level services: `nav-core` (the
+C++ visual-inertial odometry engine), `fleet-api` (the Python/FastAPI
+backend that manages multi-drone fleets), and `sky-console` (the
+TypeScript/React web dashboard customers use to monitor drones). Each
+service has its own CI pipeline but shares a single versioned release tag.
+
+3. Code Review Process
+All pull requests require at least one approval from a member of the
+CODEOWNERS file for the touched directory, plus a passing CI run. PRs to
+`nav-core` additionally require sign-off from a senior engineer on the
+Navigation team due to the safety-critical nature of that code.
+
+4. Deployment Process
+Deployments to production happen via a manual "promote" step in the
+internal deploy tool after a build has soaked in staging for at least 24
+hours with no P1/P2 incidents. Only Staff engineers and above can trigger
+a production promotion; all other engineers can deploy freely to staging.
+
+5. On-Call Rotation
+Engineers join the on-call rotation after 6 months of tenure. Rotations
+are weekly, and on-call engineers receive a $500 stipend per week of
+active rotation, paid out in the following month's paycheck.
+
+6. Internal Documentation
+Architecture decision records (ADRs) live in the `docs/adr/` folder of the
+monorepo. Any change to a public API in `fleet-api` requires a new ADR
+before the PR can be merged.

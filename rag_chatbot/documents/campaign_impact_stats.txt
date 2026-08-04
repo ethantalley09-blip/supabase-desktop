@@ -1,0 +1,27 @@
+Dana Reyes for State Senate — Field Program Impact Reference (FICTIONAL EXAMPLE)
+Updated monthly by the field director
+
+NOTE: This document is fictional example data written for demo/testing
+purposes. Any real campaign should replace these figures with its own
+actual, current vendor rates and program costs before using them in real
+donor communications — quoting a made-up figure to a real donor would be
+dishonest.
+
+Approximate current program costs, used to translate a dollar amount into
+a concrete, specific description of what it funds (never round up, never
+imply a donation funds more than its actual proportional share):
+
+- $1 funds approximately 10 peer-to-peer text messages to likely voters.
+- $5 funds one canvasser door-knock shift-hour in a targeted precinct.
+- $10 funds about 50 personalized reminder postcards.
+- $25 funds one hour of relational-organizing phone banking.
+- $50 funds roughly 500 text messages to undecided voters in the district.
+- $100 funds a half-day canvassing shift covering about 40 doors.
+- $250 funds a full precinct captain's supply kit for one weekend.
+- $500 funds a local cable TV ad spot in one media market for one day.
+
+These are approximate, rounded figures based on the campaign's own recent
+vendor invoices, not guarantees tied to any specific future purchase.
+Field program overhead (roughly 15% of the field budget) covers staff
+time, data/software costs, and printing, and is not represented in the
+per-dollar figures above.

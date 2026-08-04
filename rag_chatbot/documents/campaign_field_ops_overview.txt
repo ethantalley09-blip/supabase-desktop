@@ -1,0 +1,36 @@
+Dana Reyes for State Senate — Field Operations Staff Reference (FICTIONAL EXAMPLE)
+Internal reference for canvassing and volunteer staff
+
+NOTE: This document is fictional example content written for demo/testing
+purposes, showing how the same chatbot that answers donor questions can
+also serve as an internal staff copilot when the indexed documents cover
+campaign operations, not just donor-facing content.
+
+Canvassing shifts run in two blocks: 10am-1pm and 4pm-7pm, Tuesday
+through Saturday. Volunteers should check in at the field office 15
+minutes before their shift to get a walk packet and a working phone with
+the canvassing app installed.
+
+Door-knocking script order: introduce yourself and the campaign, ask the
+household's top issue, note it in the app even if they don't want to talk
+further, and only pivot to the candidate's position after they've spoken
+first. Never argue with a hostile respondent — thank them for their time
+and move to the next door.
+
+Data entry rules: every door gets a result code (not home / refused /
+supporter / undecided / opposed) even if no conversation happened. Blank
+entries make the next canvasser re-knock a door that was already covered.
+
+Volunteer safety: canvassers work in pairs after 6pm and in any
+precinct flagged "low-lighting" in the walk list. Any canvasser who feels
+unsafe at a specific address should mark it "skip — safety" in the app
+and move on; a field captain follows up, never the canvasser alone.
+
+Weekly team meeting is Thursdays at 6:30pm at the field office — covers
+the week's door-knocking numbers, any script updates, and a rotating
+"door story of the week" from the canvass notes.
+
+New volunteer onboarding: a 30-minute training session covers the script,
+the app, and safety rules above, required before a first solo shift; a
+volunteer's first two shifts are always paired with an experienced
+canvasser.

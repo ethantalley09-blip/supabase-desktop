@@ -7,7 +7,7 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "Supabase",
+    "productName": "Lynx",
     "version": "1.0.0"
   },
   "tauri": {
@@ -21,6 +21,22 @@
       },
       "clipboard": {
         "all": true
+      },
+      "dialog": {
+        "all": true
+      },
+      "fs": {
+        "all": false,
+        "readFile": true,
+        "writeFile": true,
+        "createDir": true,
+        "exists": true,
+        "scope": ["$APPDATA/*", "$APPDATA/**"]
+      },
+      "http": {
+        "all": false,
+        "request": true,
+        "scope": ["https://*.supabase.co/*", "https://geocoding.geo.census.gov/*"]
       }
     },
     "bundle": {
@@ -38,7 +54,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.abielzulio.supabase",
+      "identifier": "com.lynx.app",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -65,14 +81,14 @@
     "windows": [
       {
         "label": "main",
-        "userAgent": "chrome",
-        "url": "https://app.supabase.com/projects",
         "fullscreen": false,
         "height": 800,
         "center": true,
         "resizable": true,
-        "title": "Supabase",
-        "width": 1000
+        "title": "Lynx",
+        "width": 1280,
+        "minWidth": 960,
+        "minHeight": 600
       }
     ]
   }

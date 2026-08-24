@@ -1,10 +1,9 @@
 [package]
-name = "supabase"
+name = "lynx"
 version = "1.0.0"
-description = "A Supabase Desktop App"
-authors = ["Abiel Zulio M <abielzm@gmail.com>"]
+description = "Lynx — campaign and advocacy organizing platform"
 license = "MIT"
-repository = "https://github.com/abielzulio/supabase-desktop"
+repository = "https://github.com/ethantalley09-blip/supabase-desktop"
 edition = "2021"
 rust-version = "1.57"
 
@@ -16,7 +15,20 @@ tauri-build = { version = "1.2", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.2", features = ["clipboard-all", "shell-all", "window-all"] }
+# Feature list must cover every allowlist entry in tauri.conf.json:
+# clipboard/shell/window (boilerplate) + dialog-all, fs read/write/create/
+# exists, http-request (added for export, voter import, and geocoding).
+tauri = { version = "1.2", features = [
+  "clipboard-all",
+  "shell-all",
+  "window-all",
+  "dialog-all",
+  "fs-read-file",
+  "fs-write-file",
+  "fs-create-dir",
+  "fs-exists",
+  "http-request"
+] }
 
 [features]
 # by default Tauri runs in production mode

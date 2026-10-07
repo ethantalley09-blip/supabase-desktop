@@ -15,6 +15,8 @@ export const TOOL_REGISTRY = [
     { id: 'geocode_coach', label: 'AI Geocode Coach', description: 'Turns mapping health into a prioritized recovery plan.', category: 'turf', requires: ['turf.manage'] },
     { id: 'volunteer_pipeline', label: 'Volunteer Pipeline', description: 'Re-engagement or promotion messages for real volunteer situations.', category: 'turf', requires: ['turf.view'] },
     { id: 'gotv_sprint_plan', label: 'GOTV Countdown Planner', description: 'Day-by-day turnout plan from real ballot-chase status.', category: 'turf', requires: ['turf.view'] },
+    { id: 'door_intelligence', label: 'Street Risk & Access', description: 'Access and safety read on real door conditions your canvassers logged, plus a graded walk list and honest completion time.', category: 'turf', requires: ['turf.view'] },
+    { id: 'condition_review', label: 'Condition Review', description: 'Disputed and expiring door conditions, tagging outliers, and the equity audit.', category: 'turf', requires: ['turf.manage'] },
     // Comms
     { id: 'broadcast_draft', label: 'Draft Broadcast', description: 'AI-drafted team broadcasts and replies.', category: 'comms', requires: ['comms.broadcast'] },
     { id: 'outreach_booster', label: 'Outreach Booster', description: 'Saved-contact texts for supporters.', category: 'comms', requires: ['comms.view'] },
@@ -72,7 +74,7 @@ export const TOOL_LOCATIONS = Object.fromEntries(TOOL_REGISTRY.map((t) => {
     // comms/fundraising/compete tool routes correctly with zero extra wiring.
     const tab = ['ask_data', 'advisor_insights', 'campaign_coach', 'message_studio', 'content_pack', 'smart_segments'].includes(t.id)
         ? 'ai'
-        : ['field_coach', 'note_digest', 'import_mapping', 'doorstep_donations', 'geocode_coach'].includes(t.id)
+        : ['field_coach', 'note_digest', 'import_mapping', 'doorstep_donations', 'geocode_coach', 'door_intelligence', 'condition_review'].includes(t.id)
             ? 'turf'
             : t.category;
     return [t.id, { tab, anchor: `tool-${t.id}` }];

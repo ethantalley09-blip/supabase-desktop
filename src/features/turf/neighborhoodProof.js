@@ -1,7 +1,11 @@
 // Strips a leading house number so "100 Main St" and "204 Main St" match as
 // the same street — a simple, explainable heuristic (pattern: route.ts's
 // pickField, turfBriefingMath.ts's PARTY_ALIASES: pragmatic over clever).
-function streetName(addressLine) {
+// Exported for doorAttributes.ts, which keys door conditions by the same
+// street derivation — the two features must never disagree about what a
+// street is (migration 0039's trigger mirrors this regex in SQL for the same
+// reason).
+export function streetName(addressLine) {
     if (!addressLine)
         return null;
     const stripped = addressLine.replace(/^\s*\d+\s*/, '').trim().toLowerCase();

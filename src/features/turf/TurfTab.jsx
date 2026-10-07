@@ -1,6 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,11 @@ import { useAiAssist } from '@/lib/ai/useAiAssist';
 import { supabase } from '@/lib/supabase/client';
 import { findVotersInRing } from './areaSelect';
 import { BallotChase } from './BallotChase';
+import { ConditionReviewQueue } from './ConditionReviewQueue';
+import { ConditionTimeline } from './ConditionTimeline';
+import { ScoringServicePanel } from './ScoringServicePanel';
 import { DoorstepDonations } from './DoorstepDonations';
+import { StreetRiskBriefing } from './StreetRiskBriefing';
 import { GeocodeAdvanced } from './GeocodeAdvanced';
 import { GotvSprintPlan } from './GotvSprintPlan';
 import { groupIntoHouseholds } from './households';
@@ -20,7 +24,8 @@ import { TurfInsights } from './TurfInsights';
 import { buildBriefingSnapshot, classifyPersuadability, heatmapWeight, PARTY_COLORS, PARTY_LABELS, PERSUADABILITY_COLORS, PERSUADABILITY_LABELS, voterParty } from './turfBriefingMath';
 import { DEFAULT_TURF_PREFERENCES } from './turfPreferences';
 import { VolunteerPipeline } from './VolunteerPipeline';
-import { isKnockable, optimizeWalkOrder, splitIntoWalkLists, useAssignTerritory, useCreateTerritory, useCreateTerritoryFromVoters, useTerritories, useTurfPreferences, useVoterRecords, voterCity, voterWard } from './useTurf';
+import { isKnockable, optimizeWalkOrder, splitIntoWalkLists, useAssignTerritory, useCanvassVisits, useCreateTerritory, useCreateTerritoryFromVoters, useLogDoorConditions, useTerritories, useTurfPreferences, useVoterRecords, voterCity, voterWard } from './useTurf';
+import { useDoorAttributes } from './useDoorAttributes';
 // OpenFreeMap: free OSM-derived vector tiles, no API key, production-safe
 // (chosen over osm.org raster tiles, whose usage policy disallows app
 // traffic at scale). Every Turf Briefing layer — the heatmap (voters-heat),
@@ -79,6 +84,9 @@ export function TurfTab({ project }) {
     const canManage = useHasPermission(project.org_id, 'turf.manage');
     const canUseAi = useHasPermission(project.org_id, 'ai.use');
     const { data: territories } = useTerritories(project.id);
+    const { data: canvassVisits } = useCanvassVisits(project.id);
+    const { data: doorAttributes } = useDoorAttributes(project.id);
+    const logQueuedConditions = useLogDoorConditions();
     const { data: voters } = useVoterRecords(project.id);
     // Shared query key with TurfBriefing.tsx's own useTurfPreferences call —
     // React Query dedupes the fetch, so both read the same cached settings
@@ -116,6 +124,22 @@ export function TurfTab({ project }) {
     const [colorMode, setColorMode] = useState('assignment');
     const [heatmapMode, setHeatmapMode] = useState('off');
     const [groupBy, setGroupBy] = useState('individual');
+    // Sends one door-condition capture that was queued while offline. Resolving
+    // (rather than throwing) drops the item from the queue, so a voter that no
+    // longer exists in this project is discarded instead of retried forever —
+    // only a genuine transport/permission failure keeps an item queued.
+    const flushQueuedCapture = useCallback(async (item) => {
+        const voter = (voters ?? []).find((v) => v.id === item.voterId);
+        if (!voter)
+            return;
+        await logQueuedConditions.mutateAsync({
+            voterId: item.voterId,
+            projectId: item.projectId,
+            current: voter,
+            observedAttributes: item.observedAttributes,
+            contradictedAttributes: item.contradictedAttributes
+        });
+    }, [voters, logQueuedConditions]);
     // A territory's knockable, mapped doors — the set both routing and splitting
     // operate on (dead doors are already excluded here).
     const territoryDoors = (territoryId) => (voters ?? []).filter((v) => v.territory_id === territoryId && v.lat !== null && v.lng !== null && isKnockable(v));
@@ -601,6 +625,29 @@ export function TurfTab({ project }) {
     // unfiltered `voters` list.
     voters={filteredVoters} territories={territories ?? []} canUseAi={Boolean(canUseAi.data)} onRebalance={(r) => setRoute({ ...r, territoryId: 'live-rebalance', name: "Today's remaining doors" })} heatmapMode={heatmapMode} mapSelectedVoterId={mapSelectedVoterId} onClearMapSelection={() => setMapSelectedVoterId(null)}/>
       </div>
+
+      {/* Door Intelligence (migration 0039): street-level access/safety from
+            the conditions canvassers tag at the door. Mounted here rather than
+            inside TurfBriefing.tsx so it gets the same filtered voter set
+            without growing that file further. */}
+      <div id="tool-door_intelligence">
+        <StreetRiskBriefing orgId={project.org_id} projectId={project.id} voters={filteredVoters} canUseAi={Boolean(canUseAi.data)}/>
+      </div>
+
+      {/* Governance surface: turf.manage only — this is where a manager checks
+            the system's own output rather than acting on it. */}
+      {canManage.data && (<div id="tool-condition_review">
+          <ConditionReviewQueue projectId={project.id} voters={filteredVoters}/>
+        </div>)}
+
+      {/* Per-door evidence trail (.tsx) — who observed what, when, and what
+            contradicted it. Reads the canvass_visits log that already existed. */}
+      <ConditionTimeline visits={canvassVisits ?? []} voters={filteredVoters}/>
+
+      {/* Offline capture queue + scoring-service diagnostics (.tsx). The
+            Python service is optional; this panel says so plainly rather than
+            failing, since the same maths also runs in-app. */}
+      {canManage.data && (<ScoringServicePanel voters={filteredVoters} visits={canvassVisits ?? []} attributes={doorAttributes ?? []} onFlushCapture={flushQueuedCapture}/>)}
 
       {/* Doorstep fundraising: warm doors from real canvass notes + the
             20-second ask + canvasser leaderboard */}

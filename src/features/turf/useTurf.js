@@ -45,7 +45,12 @@ async function logVisit(input) {
             ballot_status: input.ballotStatus,
             notes_snapshot: input.notes,
             persuadability_bucket: bucket,
-            outcome: deriveOutcome(input.contactStatus, input.notes)
+            outcome: deriveOutcome(input.contactStatus, input.notes),
+            // Door conditions (migration 0039) ride along on the same
+            // append-only write. A DB trigger rolls them into door_attributes,
+            // so the evidence and the derived state can never diverge.
+            observed_attributes: input.observedAttributes ?? [],
+            contradicted_attributes: input.contradictedAttributes ?? []
         }).select('id').single();
         if (error)
             throw error;
@@ -257,7 +262,9 @@ export function useUpdateVoterStatus() {
                     projectId: input.projectId,
                     contactStatus: input.contact_status,
                     ballotStatus: input.ballot_status ?? input.current.ballot_status,
-                    notes: input.current.canvass_notes
+                    notes: input.current.canvass_notes,
+                    observedAttributes: input.observedAttributes,
+                    contradictedAttributes: input.contradictedAttributes
                 });
             }
         },
@@ -288,12 +295,46 @@ export function useUpdateVoterNotes() {
                 projectId: input.projectId,
                 contactStatus: input.current.contact_status,
                 ballotStatus: input.current.ballot_status,
-                notes
+                notes,
+                observedAttributes: input.observedAttributes,
+                contradictedAttributes: input.contradictedAttributes
             });
         },
         onSuccess: (_r, vars) => {
             queryClient.invalidateQueries({ queryKey: ['voter-records', vars.projectId] });
             queryClient.invalidateQueries({ queryKey: ['canvass-visits', vars.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['door-attributes', vars.projectId] });
+        }
+    });
+}
+// Logs door CONDITIONS without changing status or notes — the swipe-to-condition
+// path, where a canvasser couldn't get to the door at all. It still records a
+// real visit (an attempt happened), so Best Time to Knock and the Revisit Queue
+// stay honest; only the condition tags are new information.
+export function useLogDoorConditions() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (input) => {
+            const { error } = await supabase
+                .from('voter_records')
+                .update({ last_contacted_at: new Date().toISOString() })
+                .eq('id', input.voterId);
+            if (error)
+                throw error;
+            await logVisit({
+                voterId: input.voterId,
+                projectId: input.projectId,
+                contactStatus: input.current.contact_status,
+                ballotStatus: input.current.ballot_status,
+                notes: input.current.canvass_notes,
+                observedAttributes: input.observedAttributes,
+                contradictedAttributes: input.contradictedAttributes
+            });
+        },
+        onSuccess: (_r, vars) => {
+            queryClient.invalidateQueries({ queryKey: ['voter-records', vars.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['canvass-visits', vars.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['door-attributes', vars.projectId] });
         }
     });
 }
@@ -358,7 +399,7 @@ export function useCanvassVisits(projectId) {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('canvass_visits')
-                .select('id, voter_id, occurred_at, outcome, persuadability_bucket, notes_snapshot, canvasser_id, voter:voter_id(full_name), canvasser:canvasser_id(full_name)')
+                .select('id, voter_id, occurred_at, outcome, persuadability_bucket, notes_snapshot, canvasser_id, observed_attributes, contradicted_attributes, voter:voter_id(full_name), canvasser:canvasser_id(full_name)')
                 .eq('project_id', projectId)
                 .order('occurred_at', { ascending: false })
                 .limit(5000);
@@ -372,6 +413,10 @@ export function useCanvassVisits(projectId) {
                 outcome: r.outcome,
                 persuadability_bucket: r.persuadability_bucket,
                 notes_snapshot: r.notes_snapshot,
+                // Needed by doorAttributes.ts to detect a door condition that
+                // was NOT re-observed on a later visit.
+                observed_attributes: r.observed_attributes ?? [],
+                contradicted_attributes: r.contradicted_attributes ?? [],
                 voter_name: r.voter?.full_name ?? null,
                 canvasser_id: r.canvasser_id,
                 canvasser_name: r.canvasser?.full_name ?? null

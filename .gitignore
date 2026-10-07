@@ -17,3 +17,7 @@ supabase/functions/.env
 volunteer-drive-overview.csv
 .vercel
 .env*
+
+# Python bytecode / test caches (python_svc)
+__pycache__/
+.pytest_cache/

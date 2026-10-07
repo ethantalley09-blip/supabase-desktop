@@ -598,6 +598,63 @@ Rules:
 - watch_out: one sentence flagging the biggest risk (e.g. pace behind plan, a cluster of opposed doors, most doors going stale) — grounded only in the numbers given.
 - Never invent a ward, precinct, name, or number not present in the snapshot. If the snapshot is too thin to say anything specific, say so plainly rather than filling in generic filler.
 - Return JSON only.`;
+// door_condition_briefing: the ACCESS-AND-SAFETY read on a territory, a third
+// axis alongside turf_briefing (pace and lean) and
+// territory_difficulty_briefing (contact difficulty). Grounded only in the
+// aggregate snapshot streetRisk.ts builds — street names and counts, never a
+// resident, an address, or a note. Streets whose safety signal comes from a
+// single address arrive with safetySuppressed set and must not be discussed.
+const DOOR_CONDITION_SYSTEM = `You brief a canvass captain on the physical access and safety conditions of a territory before a shift, from a real aggregate snapshot (JSON) of door conditions their own canvassers have logged: per-street access friction, dominant access constraints, hazard density, known facilities, and hard exclusions.
+
+Return ONLY a JSON object: {"headline":"...","street_notes":[{"street":"...","condition":"...","instruction":"..."}],"pairing_advice":"...","time_impact":"..."}
+
+Rules:
+- headline: one sentence naming the single biggest access or safety consideration for this shift, citing a real street name and real number from the snapshot.
+- street_notes: 2-4 entries, highest friction or hazard first. "street" must be a street name present in the snapshot. "condition" cites the real numbers behind it. "instruction" is one concrete thing the captain tells volunteers before they walk.
+- pairing_advice: one sentence. Recommend two-person teams ONLY for streets whose real hazardDensity is above 0.25 or which carry a real confirmed safety exclusion. If no street meets that bar, say plainly that no pairing is needed today.
+- time_impact: one sentence on how the real access friction affects expected pace, using realMedianMinutesPerDoor from the snapshot. If sampleSizeVisits is under 40, say the pace estimate is not yet reliable rather than stating a number.
+- Never name, describe, or characterize a resident, a household, or an address. You are describing STREETS and BUILDINGS only. If a street has safetySuppressed set to true, do not mention its safety situation at all — it has too few observations to discuss responsibly.
+- Never infer why a door is hostile, never speculate about a resident's politics, demographics, or character, and never suggest avoiding an area for any reason other than the logged physical conditions.
+- Never invent a street, facility, count, or constraint not present in the snapshot. If the snapshot is too thin to say anything specific, say so plainly rather than filling in generic filler.
+- Return JSON only.`;
+// access_constraint_plan: gated properties, HOA communities, apartment
+// buildings and senior facilities are where campaigns lose the most doors to
+// PROCEDURE rather than persuasion. Every rule below that looks redundant is
+// load-bearing: the failure mode for this purpose is cheerfully suggesting a
+// workaround that is trespassing.
+const ACCESS_CONSTRAINT_SYSTEM = `You plan lawful, courteous access for a canvass team to a real location that has a logged access constraint (a gated property, an HOA-restricted community, a multi-unit apartment building, or a senior living facility). You are given the real constraint type, the real number of doors behind it, how confident the logged observation is, and any real staff note.
+
+Return ONLY a JSON object: {"approach":"...","steps":["...","...","..."],"ask_script":"...","if_refused":"...","expected_yield":"..."}
+
+Rules:
+- approach: one sentence on the right way to approach this specific constraint type.
+- steps: 3-5 concrete, ordered actions appropriate to the constraint type — for example contacting a property manager or HOA board in advance, checking in at a front desk, or requesting a posted visiting window at a senior facility.
+- ask_script: 2-3 spoken sentences a canvasser says to a gatekeeper, manager, or front desk. Identify the campaign honestly and state the purpose plainly.
+- if_refused: what to do when access is denied. This must ALWAYS be to accept the refusal, leave, and log it. Never suggest returning later without permission, following another person through an entry, calling units from a directory panel to be let in, or any other workaround.
+- expected_yield: one honest sentence on how many of the real doors behind this constraint are realistically reachable if access is granted, using the real door count given.
+- NEVER suggest entering a posted, gated, or restricted property without permission, and never suggest any step that could be read as circumventing a lock, a gate, a posted notice, or a stated refusal. If the constraint type is a posted no-trespass notice, the approach is solely to not visit the property and to reach those voters through another channel.
+- For a senior living facility, additionally note that residents may need more time, that a visit must not disrupt care or scheduled activities, and that staff permission governs.
+- Never invent a property manager name, an HOA rule, a phone number, or a policy that was not provided. Return JSON only.`;
+// safety_cluster_advisory: fires only when streetRisk.ts's findSafetyAdvisories
+// clears every threshold (2+ distinct addresses, 2+ distinct reporters, real
+// density, 14-day cooldown). Separate from door_condition_briefing because its
+// guardrails are materially stricter and it is delivered as a notification.
+// The distinct-reporter count is passed in specifically so the model can say
+// out loud when a "cluster" is really one person's afternoon.
+const SAFETY_CLUSTER_SYSTEM = `A real cluster of safety-related door observations has crossed a threshold on one street, logged by the campaign's own canvassers. You write a short, calm advisory for the campaign manager. You are given the street name, the real number of doors with a safety observation, the real number of distinct canvassers who reported them, and the real total doors on that street.
+
+Return ONLY a JSON object: {"summary":"...","precautions":["...","..."],"verification_step":"...","tone_check":"..."}
+
+Rules:
+- summary: two sentences maximum. State the real counts plainly. Explicitly note how many distinct canvassers reported, because one canvasser reporting several doors is a materially weaker signal than several canvassers reporting several doors — say so when that is the case.
+- precautions: 2-3 practical, proportionate measures — for example walking this street in pairs, scheduling it in daylight, or briefing volunteers to disengage early and politely. Precautions are about how the TEAM works, never about who the residents are.
+- verification_step: one concrete way to check whether this cluster is real before acting on it permanently — for example having an experienced canvasser or staff member walk it once and confirm.
+- tone_check: one sentence reminding the manager that these are the campaign's own volunteers' impressions of brief interactions, not verified facts about the people who live there.
+- NEVER name a resident, a household, an address, or a house number. Street level only.
+- NEVER characterize residents by politics, party, demographics, national origin, language, income, appearance, or any protected characteristic, and never speculate about why the interactions went badly.
+- NEVER recommend contacting law enforcement, filing a report about a resident, sharing this information outside the campaign, or adding anyone to any list beyond the campaign's own internal walk-list exclusion.
+- NEVER escalate the language beyond what the real numbers support. If the cluster is small or comes from a single reporter, say plainly that it may not be meaningful.
+- Never invent an incident, a detail, or a number not provided. Return JSON only.`;
 // door_objection_assist: the only REAL-TIME, at-the-door AI coaching in the
 // product — a canvasser types the objection they just heard and gets an
 // instant pivot, mid-conversation. `instructions` is the objection as heard;
@@ -1035,6 +1092,12 @@ function systemFor(purpose) {
         return VOLUNTEER_PIPELINE_SYSTEM;
     if (purpose === 'gotv_sprint_plan')
         return GOTV_SPRINT_SYSTEM;
+    if (purpose === 'door_condition_briefing')
+        return DOOR_CONDITION_SYSTEM;
+    if (purpose === 'access_constraint_plan')
+        return ACCESS_CONSTRAINT_SYSTEM;
+    if (purpose === 'safety_cluster_advisory')
+        return SAFETY_CLUSTER_SYSTEM;
     if (purpose === 'turf_briefing')
         return TURF_BRIEFING_SYSTEM;
     if (purpose === 'door_objection_assist')
@@ -1321,6 +1384,15 @@ function buildPrompt(b) {
     if (b.purpose === 'turf_briefing') {
         return `Real-time turf snapshot (JSON):\n${b.context}\n\nWrite the pre-shift briefing.`;
     }
+    if (b.purpose === 'door_condition_briefing') {
+        return `Real aggregate door-condition snapshot, street level only (JSON):\n${b.context}\n\nWrite the access and safety briefing.`;
+    }
+    if (b.purpose === 'access_constraint_plan') {
+        return `Real logged access constraint for one location (JSON):\n${b.context}\n\nPlan lawful, courteous access.`;
+    }
+    if (b.purpose === 'safety_cluster_advisory') {
+        return `Real safety-observation cluster on one street (JSON):\n${b.context}\n\nWrite the manager advisory.`;
+    }
     if (b.purpose === 'donation_objection_handler') {
         const lines = [`Real decline/stall just heard on a donation ask: ${b.instructions}`];
         if (b.context?.trim())
@@ -1533,6 +1605,9 @@ Deno.serve(async (req) => {
         body.purpose === 'endorsement_ask' ||
         body.purpose === 'quick_insight' ||
         body.purpose === 'turf_briefing' ||
+        body.purpose === 'door_condition_briefing' ||
+        body.purpose === 'access_constraint_plan' ||
+        body.purpose === 'safety_cluster_advisory' ||
         body.purpose === 'door_script_personalize' ||
         body.purpose === 'door_explainer' ||
         body.purpose === 'door_language_prep' ||

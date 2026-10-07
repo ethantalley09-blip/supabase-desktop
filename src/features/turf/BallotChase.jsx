@@ -4,7 +4,11 @@ import { Button } from '@/components/ui/button';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { useAiAssist } from '@/lib/ai/useAiAssist';
 import { useCampaignScripts } from '@/features/scripts/useScripts';
-import { useLogSurveyResponses, useUpdateVoterNotes, useUpdateVoterStatus } from './useTurf';
+import { DoorConditionPanel } from './DoorConditionPanel';
+import { normalizeAddress, rollUpAddress, scoreAllAttributes } from './doorAttributes';
+import { enqueue } from './offlineQueue';
+import { useDoorAttributes } from './useDoorAttributes';
+import { useCanvassVisits, useLogDoorConditions, useLogSurveyResponses, useUpdateVoterNotes, useUpdateVoterStatus } from './useTurf';
 const CONTACT_OPTIONS = [
     { value: 'active', label: 'Active' },
     { value: 'moved', label: 'Moved' },
@@ -31,7 +35,21 @@ export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage
     const updateStatus = useUpdateVoterStatus();
     const updateNotes = useUpdateVoterNotes();
     const logSurvey = useLogSurveyResponses();
+    const logConditions = useLogDoorConditions();
     const { data: campaignScripts } = useCampaignScripts(projectId);
+    const { data: doorAttributes } = useDoorAttributes(projectId);
+    const { data: visits } = useCanvassVisits(projectId);
+    // Door conditions (migration 0039). Scored here rather than per row so the
+    // whole table shares one pass, and so a chip can inherit from a neighbour
+    // on the same street without each row re-deriving the street rollup.
+    const doorModel = useMemo(() => {
+        const scored = scoreAllAttributes({
+            attributes: doorAttributes ?? [],
+            visits: visits ?? [],
+            voters
+        });
+        return { scored, profiles: rollUpAddress(scored) };
+    }, [doorAttributes, visits, voters]);
     const activeSurveyQuestions = useMemo(() => (campaignScripts ?? []).filter((s) => s.kind === 'survey_question' && s.active), [campaignScripts]);
     const aiEnabled = useEntitlement(orgId, 'ai_module');
     const summarize = useAiAssist();
@@ -66,6 +84,30 @@ export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage
         purpose: 'note_summary',
         notes: notesInView.slice(0, MAX_NOTES_FOR_AI)
     });
+    // Door conditions are the one capture a canvasser makes while physically
+    // standing somewhere with bad signal, so a failed write queues locally
+    // instead of being lost. The queued item carries its own id, so the retry
+    // can never double-log the visit (which would corrupt Best Time to Knock).
+    const commitConditions = async (voter, observed, contradicted) => {
+        const payload = {
+            voterId: voter.id,
+            projectId,
+            current: voter,
+            observedAttributes: observed,
+            contradictedAttributes: contradicted
+        };
+        try {
+            await logConditions.mutateAsync(payload);
+        }
+        catch {
+            enqueue({
+                voterId: voter.id,
+                projectId,
+                observedAttributes: observed,
+                contradictedAttributes: contradicted
+            });
+        }
+    };
     const saveNote = (voter, next) => {
         if (next === (voter.canvass_notes ?? ''))
             return; // unchanged — skip the write
@@ -109,6 +151,7 @@ export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage
               <th className="px-4 py-2">Address status</th>
               <th className="px-4 py-2">Ballot</th>
               <th className="px-4 py-2">Notes</th>
+              {canManage && <th className="px-4 py-2">Conditions</th>}
               {canManage && activeSurveyQuestions.length > 0 && <th className="px-4 py-2">Survey</th>}
             </tr>
           </thead>
@@ -152,12 +195,15 @@ export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage
             // doesn't fire a network write per keystroke.
             <textarea key={v.id} rows={2} defaultValue={v.canvass_notes ?? ''} placeholder="Door notes…" className="w-full min-w-[12rem] rounded-md border border-neutral-300 px-2 py-1 text-sm" onBlur={(e) => saveNote(v, e.target.value.trim())}/>) : (<span className="text-neutral-500">{v.canvass_notes || '—'}</span>)}
                 </td>
+                {canManage && (<td className="px-4 py-2">
+                    <DoorConditionPanel key={v.id} voter={v} profile={v.address_line ? doorModel.profiles.get(normalizeAddress(v.address_line)) : null} allScored={doorModel.scored} isPending={logConditions.isPending} onCommit={({ observed, contradicted }) => commitConditions(v, observed, contradicted)}/>
+                  </td>)}
                 {canManage && activeSurveyQuestions.length > 0 && (<td className="px-4 py-2">
                     <SurveyCell voter={v} questions={activeSurveyQuestions} onSave={(answers) => logSurvey.mutate({ voterId: v.id, projectId, current: v, answers })} isPending={logSurvey.isPending}/>
                   </td>)}
               </tr>))}
             {rows.length === 0 && (<tr>
-                <td colSpan={canManage && activeSurveyQuestions.length > 0 ? 5 : 4} className="px-4 py-6 text-center text-sm text-neutral-400">
+                <td colSpan={4 + (canManage ? 1 : 0) + (canManage && activeSurveyQuestions.length > 0 ? 1 : 0)} className="px-4 py-6 text-center text-sm text-neutral-400">
                   No voters in view. Import voters or adjust the city/ward filter above.
                 </td>
               </tr>)}
@@ -169,6 +215,7 @@ export function BallotChase({ orgId, projectId, voters, visibleVoters, canManage
       </div>
       {updateStatus.isError && (<p className="text-sm text-red-600">{updateStatus.error.message}</p>)}
       {updateNotes.isError && (<p className="text-sm text-red-600">{updateNotes.error.message}</p>)}
+      {logConditions.isError && (<p className="text-sm text-red-600">{logConditions.error.message}</p>)}
     </div>);
 }
 // One row's worth of survey inputs, batched behind a single "Save answers"

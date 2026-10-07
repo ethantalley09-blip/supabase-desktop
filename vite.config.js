@@ -34,6 +34,16 @@ export default defineConfig({
                 target: 'https://geocoding.geo.census.gov',
                 changeOrigin: true,
                 rewrite: (p) => p.replace(/^\/census-geocode/, '')
+            },
+            // Door Intelligence scoring service (python_svc/). Proxied so the
+            // browser sees a same-origin request and skips the CORS preflight.
+            // The service is OPTIONAL — the same maths runs in-app — so a
+            // connection refusal here must not be treated as a fatal error;
+            // useScoringService.ts handles it as "service not running".
+            '/door-intel': {
+                target: 'http://127.0.0.1:8555',
+                changeOrigin: true,
+                rewrite: (p) => p.replace(/^\/door-intel/, '')
             }
         }
     },

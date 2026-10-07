@@ -1,0 +1,165 @@
+{
+  "_comment": [
+    "Cross-language contract for the Door Intelligence scoring engine.",
+    "",
+    "The confidence model is implemented twice: in Python (python_svc/) as the",
+    "authoritative service, and in JavaScript (src/features/turf/) for the",
+    "in-app path that must keep working when the service is unreachable.",
+    "Duplicated logic drifts, so both test suites assert against THIS file:",
+    "  python_svc/tests/test_parity.py",
+    "  src/features/turf/parity.test.js",
+    "Change a constant in either implementation and the other side's suite",
+    "fails. Expected values are hand-derived from the formulas in",
+    "docs/DOOR_INTELLIGENCE_PRD.md section 2.2, not captured from either",
+    "implementation's output -- capturing output would only prove the two",
+    "agree on a bug.",
+    "",
+    "Same reasoning as the pgTAP suite asserting migration 0039's SQL address",
+    "normalization matches households.js."
+  ],
+  "now": "2026-08-15T12:00:00.000Z",
+  "tolerance": 1e-9,
+
+  "attributeCases": [
+    {
+      "id": "single_observer_fresh",
+      "note": "E=1.0 -> base 1/2.5. One report is worth noticing, not acting on.",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a"], "observation_count": 1, "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.4, "tier": "advisory" }
+    },
+    {
+      "id": "two_observers_fresh",
+      "note": "E=2.0 -> base 2/3.5. Two independent observers crosses `actionable`.",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a", "b"], "observation_count": 2, "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.5714285714285714, "tier": "actionable" }
+    },
+    {
+      "id": "repeat_same_observer_worth_less",
+      "note": "E=1.0+0.35. Three reports from one person is still one person's opinion.",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a"], "observation_count": 2, "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.47368421052631576, "tier": "advisory" }
+    },
+    {
+      "id": "written_note_bonus",
+      "note": "E=1.0+0.25",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a"], "observation_count": 1, "noted_observation_count": 1, "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.45454545454545453, "tier": "advisory" }
+    },
+    {
+      "id": "staff_confirmed_is_hard_regardless_of_arithmetic",
+      "note": "E=1.5 -> base 0.5, well under the hard threshold, but a human said so.",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a"], "observation_count": 1, "status": "staff_confirmed", "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.5, "tier": "hard" }
+    },
+    {
+      "id": "contradiction_pulls_below_actionable",
+      "note": "E=2.0-0.5. One explicit deselect undoes a second observer.",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a", "b"], "observation_count": 2, "contradiction_count": 1, "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.5, "tier": "advisory" }
+    },
+    {
+      "id": "silent_non_confirmation_counts_for_unmissable_tag",
+      "note": "E=1.0-0.30. A gate cannot be missed, so two later visits without it are evidence against.",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a"], "observation_count": 1, "daysSinceConfirmed": 0 },
+      "silentNonConfirmations": 2,
+      "expected": { "confidence": 0.3181818181818182, "tier": "advisory" }
+    },
+    {
+      "id": "silent_non_confirmation_ignored_for_dogs",
+      "note": "A dog may be indoors. Identical input to the case above, no penalty.",
+      "attribute": { "tag": "dogs", "class": "hazard", "observer_ids": ["a"], "observation_count": 1, "daysSinceConfirmed": 0 },
+      "silentNonConfirmations": 2,
+      "expected": { "confidence": 0.4, "tier": "advisory" }
+    },
+    {
+      "id": "hostile_solo_capped_below_hard",
+      "note": "E=4.85 -> 0.7638, over the hard threshold. One canvasser's bad afternoon must never permanently mark a household.",
+      "attribute": { "tag": "hostile", "class": "safety", "observer_ids": ["a"], "observation_count": 12, "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.7637795275590551, "tier": "actionable" }
+    },
+    {
+      "id": "hostile_corroborated_reaches_hard",
+      "note": "E=5.5 -> 0.7857, two distinct observers, so the cap lifts.",
+      "attribute": { "tag": "hostile", "class": "safety", "observer_ids": ["a", "b"], "observation_count": 12, "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.7857142857142857, "tier": "hard" }
+    },
+    {
+      "id": "hostile_decays_below_advisory_after_one_half_life",
+      "note": "safety half-life is 180d: 0.5714 * 0.5.",
+      "attribute": { "tag": "hostile", "class": "safety", "observer_ids": ["a", "b"], "observation_count": 2, "daysSinceConfirmed": 180 },
+      "expected": { "confidence": 0.2857142857142857, "tier": "none" }
+    },
+    {
+      "id": "no_trespassing_never_decays_and_is_hard_at_one_observer",
+      "note": "A posted sign is a standing legal notice, not an opinion that ages out.",
+      "attribute": { "tag": "no_trespassing", "class": "legal", "observer_ids": ["a"], "observation_count": 1, "daysSinceConfirmed": 2000 },
+      "expected": { "confidence": 0.4, "tier": "hard" }
+    },
+    {
+      "id": "retracted_is_zeroed",
+      "note": "A human retraction outranks fresh evidence.",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a", "b"], "observation_count": 4, "status": "retracted", "status_reason": "Gate removed", "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.0, "tier": "none" }
+    },
+    {
+      "id": "disputed_capped_at_advisory",
+      "note": "E=4.75 -> 0.76, but a later visit contradicted it, so it must not drive routing until a human resolves it.",
+      "attribute": { "tag": "gated_home", "class": "access", "observer_ids": ["a", "b", "c"], "observation_count": 8, "status": "disputed", "daysSinceConfirmed": 0 },
+      "expected": { "confidence": 0.76, "tier": "advisory" }
+    },
+    {
+      "id": "facility_decays_slowly",
+      "note": "facility half-life is 730d. A building is still a building next year.",
+      "attribute": { "tag": "apartment", "class": "facility", "observer_ids": ["a", "b"], "observation_count": 2, "daysSinceConfirmed": 730 },
+      "expected": { "confidence": 0.2857142857142857, "tier": "none" }
+    }
+  ],
+
+  "walkListCases": [
+    {
+      "id": "reference_route",
+      "note": "The worked example in docs/DOOR_INTELLIGENCE_PRD.md section 3.4.",
+      "doorGroups": [
+        { "prefix": "Gate St", "count": 6, "attributes": [{ "tag": "gated_home", "class": "access", "confidence": 0.8, "tier": "actionable" }] },
+        { "prefix": "Apt Rd", "count": 14, "attributes": [{ "tag": "apartment", "class": "facility", "confidence": 0.88, "tier": "actionable" }] },
+        { "prefix": "Dog Ln", "count": 2, "attributes": [{ "tag": "dogs", "class": "hazard", "confidence": 0.62, "tier": "actionable" }] },
+        { "prefix": "Hostile Way", "count": 1, "attributes": [{ "tag": "hostile", "class": "safety", "confidence": 0.71, "tier": "actionable" }] },
+        { "prefix": "Plain Ave", "count": 17, "attributes": [] }
+      ],
+      "pathMeters": 2100,
+      "projectMedianMinutes": 4.2,
+      "projectMedianDensity": 16,
+      "expected": { "safety": 89, "access": 79, "density": 60, "composite": 78, "grade": "B", "frictionMinutes": 46 }
+    },
+    {
+      "id": "safety_gate_overrides_a_good_composite",
+      "note": "Composite is respectable; the gate flags it anyway. This is the single most important behaviour in the scorer.",
+      "doorGroups": [
+        { "prefix": "Rough St", "count": 3, "attributes": [{ "tag": "hostile", "class": "safety", "confidence": 0.6, "tier": "actionable" }] },
+        { "prefix": "Plain Ave", "count": 7, "attributes": [] }
+      ],
+      "pathMeters": 500,
+      "projectMedianMinutes": 4.2,
+      "projectMedianDensity": 16,
+      "expected": { "safety": 28, "access": 100, "density": 63, "composite": 58, "grade": "REVIEW", "frictionMinutes": 0 }
+    },
+    {
+      "id": "new_project_with_no_history_is_not_punished",
+      "note": "access and density are honestly null and the composite renormalizes over what exists.",
+      "doorGroups": [{ "prefix": "Plain Ave", "count": 10, "attributes": [] }],
+      "pathMeters": 0,
+      "projectMedianMinutes": null,
+      "projectMedianDensity": null,
+      "expected": { "safety": 100, "access": null, "density": null, "composite": 100, "grade": "A", "frictionMinutes": 0 }
+    }
+  ],
+
+  "gradeCases": [
+    { "composite": 95, "safety": 39, "expected": "REVIEW", "note": "the gate cannot be outvoted" },
+    { "composite": 95, "safety": 40, "expected": "C", "note": "clearing the review floor is not the same as being safe" },
+    { "composite": 95, "safety": 50, "expected": "B" },
+    { "composite": 85, "safety": 55, "expected": "B", "note": "composite is an A; safety holds it back" },
+    { "composite": 85, "safety": 60, "expected": "A" },
+    { "composite": 30, "safety": 100, "expected": "D" }
+  ]
+}

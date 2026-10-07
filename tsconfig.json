@@ -1,21 +1,38 @@
 {
+  // Reintroduced ONLY for the .tsx/.ts files added alongside the Python
+  // scoring service. The app itself is still plain JS/JSX by owner decision
+  // (see CLAUDE.md's stack note) and nothing here changes that:
+  //
+  //   * `npm run build` is still bundling only — tsc is NOT in the build
+  //     pipeline, so a type error cannot block a deploy.
+  //   * `checkJs: false` means the existing .js/.jsx files are read for
+  //     inference but never type-checked, so this cannot spray errors across
+  //     a codebase that was deliberately untyped.
+  //   * `npm run typecheck` runs this on demand.
+  //
+  // Net effect: the new TypeScript gets real type safety, the existing
+  // JavaScript is left exactly as it was.
   "compilerOptions": {
-    "target": "ESNext",
-    "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "allowJs": false,
-    "skipLibCheck": true,
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
+    "target": "ES2021",
+    "lib": ["ES2021", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "moduleResolution": "Node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "types": ["vite/client", "node"],
+    // No baseUrl: deprecated in TS 6 and unnecessary under moduleResolution
+    // "bundler", where paths resolve relative to this file.
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

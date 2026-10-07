@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/census-geocode/:path*", "destination": "/api/census-geocode/:path*" }
+  ]
+}

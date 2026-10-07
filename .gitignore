@@ -3,3 +3,21 @@ node_modules
 src-tauri/target
 .DS_Store
 */.DS_Store
+.env.local
+.env*.local
+
+# Edge-function secrets for local `supabase functions serve` — never commit
+supabase/.env
+supabase/functions/.env
+
+# Local Claude Code preview config (machine-specific paths)
+.claude/
+
+# Ad-hoc data exports produced while testing
+volunteer-drive-overview.csv
+.vercel
+.env*
+
+# Python bytecode / test caches (python_svc)
+__pycache__/
+.pytest_cache/

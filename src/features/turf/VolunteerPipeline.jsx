@@ -1,0 +1,109 @@
+import { HeartHandshake, Sparkles, Zap } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useOrgMembersForBridge } from '@/features/fundraising/useFundraisingAi';
+import { extractJson } from '@/lib/ai/extractJson';
+import { useAiAssist } from '@/lib/ai/useAiAssist';
+import { useMutation } from '@tanstack/react-query';
+import { detectCanvasserCadence } from './canvasserCadence';
+import { useCanvassVisits } from './useTurf';
+function useVolunteerPipeline() {
+    const ai = useAiAssist();
+    return useMutation({
+        mutationFn: async (input) => {
+            const result = await ai.mutateAsync({
+                orgId: input.orgId,
+                projectId: input.projectId,
+                purpose: 'volunteer_pipeline',
+                context: JSON.stringify({ volunteer_name: input.volunteerName, situation: input.situation })
+            });
+            const parsed = extractJson(result.text);
+            if (!parsed)
+                throw new Error('Could not parse the volunteer message');
+            return parsed;
+        }
+    });
+}
+// Volunteer Recruitment & Retention: donors get churn_prediction and a win-back
+// sequence, volunteers get nothing today. Same idea, different roster —
+// staff describe a real lapse or a real moment of readiness, the AI drafts
+// the re-engagement or promotion ask.
+export function VolunteerPipeline({ orgId, projectId }) {
+    const { data: members } = useOrgMembersForBridge(orgId);
+    const { data: visits } = useCanvassVisits(projectId);
+    const draft = useVolunteerPipeline();
+    const [volunteerId, setVolunteerId] = useState('');
+    const [situation, setSituation] = useState('');
+    const [copied, setCopied] = useState(false);
+    // Volunteer Cadence Detector: canvass_visits (migration 0030) now has
+    // exactly the real per-canvasser shift history the comment above used to
+    // say didn't exist — auto-detect a lapsing or accelerating canvasser
+    // instead of requiring staff to notice and type the situation by hand.
+    // Reuses this same volunteer_pipeline purpose; no new AI purpose needed.
+    const cadenceSignals = useMemo(() => detectCanvasserCadence(visits ?? []), [visits]);
+    const useDetected = (signal) => {
+        setVolunteerId(signal.canvasserId);
+        setSituation(signal.situation);
+    };
+    const volunteerName = members?.find((m) => m.profile_id === volunteerId)?.full_name ?? '';
+    const run = () => {
+        if (!volunteerName || situation.trim().length < 10)
+            return;
+        draft.mutate({ orgId, projectId, volunteerName, situation: situation.trim() });
+    };
+    const copy = async () => {
+        if (!draft.data)
+            return;
+        await navigator.clipboard.writeText(draft.data.message);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
+    return (<div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
+      <div className="flex items-center gap-2">
+        <HeartHandshake className="h-4 w-4 text-rose-600"/>
+        <h3 className="text-sm font-semibold text-neutral-900">Volunteer Pipeline</h3>
+      </div>
+      <p className="text-xs text-neutral-500">
+        A lapsed volunteer, or one ready for more? Describe the real situation and get a warm
+        re-engagement or promotion message — never a guilt trip.
+      </p>
+
+      {cadenceSignals.length > 0 && (<div className="space-y-1 rounded-md border border-rose-100 bg-rose-50/50 p-2">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-rose-700">
+            <Zap className="h-3.5 w-3.5"/>
+            Detected from real shift history
+          </p>
+          {cadenceSignals.map((s) => (<div key={s.canvasserId} className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-neutral-700">
+                {s.name} — {s.pattern === 'lapsing' ? 'may be lapsing' : 'may be ready for more'}
+              </span>
+              <Button size="sm" variant="outline" onClick={() => useDetected(s)}>
+                Use this
+              </Button>
+            </div>))}
+        </div>)}
+
+      <div className="flex flex-wrap gap-2">
+        <select className="h-9 rounded-md border border-neutral-300 bg-white px-3 text-sm" value={volunteerId} onChange={(e) => setVolunteerId(e.target.value)}>
+          <option value="">Select team member…</option>
+          {members?.map((m) => (<option key={m.profile_id} value={m.profile_id}>
+              {m.full_name}
+            </option>))}
+        </select>
+        <input className="h-9 min-w-64 flex-1 rounded-md border border-neutral-300 px-3 text-sm" placeholder="e.g. Did 6 shifts in March, hasn't signed up since — no explanation" value={situation} onChange={(e) => setSituation(e.target.value)}/>
+        <Button size="sm" onClick={run} disabled={draft.isPending || !volunteerName || situation.trim().length < 10}>
+          <Sparkles className="h-4 w-4"/>
+          {draft.isPending ? 'Drafting…' : 'Draft message'}
+        </Button>
+      </div>
+      {draft.isError && <p className="text-sm text-red-600">{draft.error.message}</p>}
+
+      {draft.data && (<div className="space-y-1.5 rounded-md border border-rose-100 bg-rose-50 p-3 text-sm text-neutral-800">
+          <p className="whitespace-pre-wrap">{draft.data.message}</p>
+          <p className="text-xs font-medium text-rose-700">Next step: {draft.data.suggested_next_step}</p>
+          <Button size="sm" variant="outline" onClick={copy}>
+            {copied ? 'Copied!' : 'Copy message'}
+          </Button>
+        </div>)}
+    </div>);
+}

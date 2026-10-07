@@ -1,0 +1,12 @@
+node_modules
+src-tauri/target
+src-tauri
+dist
+.DS_Store
+.env.local
+.env*.local
+supabase/.env
+supabase/functions/.env
+.claude/
+volunteer-drive-overview.csv
+.git

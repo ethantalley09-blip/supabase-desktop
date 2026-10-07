@@ -8,14 +8,16 @@ const CATEGORY_LABEL = {
     turf: 'Turf',
     comms: 'Comms',
     fundraising: 'Fundraising',
-    compete: 'Compete'
+    compete: 'Compete',
+    governing: 'Office'
 };
 const TAB_HINT = {
     ai: 'Below on this page',
     turf: 'Opens Turf Map tab',
     comms: 'Opens Comms tab',
     fundraising: 'Opens Fundraising tab',
-    compete: 'Opens Compete tab'
+    compete: 'Opens Compete tab',
+    governing: 'Opens Office tab (Governing mode)'
 };
 // The per-role AI dashboard: only the tools this role's permissions unlock
 // (filterTools), organized under category tabs, drag-and-drop to reorder,
@@ -29,7 +31,7 @@ export function AiDashboard({ orgId, onOpenTool }) {
     const [activeCat, setActiveCat] = useState('all');
     const [dragId, setDragId] = useState(null);
     const { visible, hiddenTools } = useMemo(() => arrangeTools(tools, layout), [tools, layout]);
-    const cats = useMemo(() => ['general', 'turf', 'comms', 'fundraising', 'compete'].filter((c) => tools.some((t) => t.category === c)), [tools]);
+    const cats = useMemo(() => ['general', 'turf', 'comms', 'fundraising', 'compete', 'governing'].filter((c) => tools.some((t) => t.category === c)), [tools]);
     const shown = activeCat === 'all' ? visible : visible.filter((t) => t.category === activeCat);
     const persist = (order, hidden) => save.mutate({ orgId, layout: { order, hidden } });
     const onDrop = (targetId) => {

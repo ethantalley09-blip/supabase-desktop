@@ -60,6 +60,11 @@ export const TOOL_REGISTRY = [
     { id: 'red_team', label: 'Red Team', description: 'Attack your own record before the opponent does.', category: 'compete', requires: ['compete.view'] },
     { id: 'mistake_response', label: 'Mistake Response', description: 'Honest accountability statement for a real candidate mistake.', category: 'compete', requires: ['compete.view'] },
     { id: 'interview_prep', label: 'Interview Prep', description: 'Prep for a friendly local interview, not a debate.', category: 'compete', requires: ['compete.view'] },
+    // Governing mode (0042) — the officeholder's Office tab. Category
+    // 'governing' is also the tab name, so it routes with no TOOL_LOCATIONS
+    // exception; ProjectDetailsPage.openTool no-ops it while the project is
+    // still in campaign mode.
+    { id: 'office_briefing', label: 'Office Casework & Replies', description: 'Constituent case queue, AI-drafted replies, and a chief-of-staff briefing on what is slipping (Governing mode).', category: 'governing', requires: ['governing.view'] },
     // Integrations — connects real external tools (SMS/email, events,
     // petitions) via webhook or API poll; category 'integrations' matches
     // the tab name 1:1, so no TOOL_LOCATIONS exception needed.
@@ -91,7 +96,7 @@ export function isToolVisible(toolId, permissions, hasAiModule) {
     return filterTools(permissions, hasAiModule).some((t) => t.id === toolId);
 }
 export function toolsByCategory(tools) {
-    const grouped = { general: [], turf: [], comms: [], fundraising: [], compete: [], integrations: [] };
+    const grouped = { general: [], turf: [], comms: [], fundraising: [], compete: [], governing: [], integrations: [] };
     for (const tool of tools)
         grouped[tool.category].push(tool);
     return grouped;

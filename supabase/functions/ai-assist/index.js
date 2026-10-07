@@ -1048,6 +1048,33 @@ Rules:
 - one_thing_to_land: the single message the candidate should make sure comes through regardless of what's asked.
 - Never invent facts, polling numbers, or endorsements not provided by staff.
 - Return JSON only.`;
+// constituent_reply (Governing mode): a reply from an elected official's
+// office to ONE constituent case. The payload carries the first name only —
+// never email/phone/full name (buildReplyContext in governingMath.js).
+const CONSTITUENT_REPLY_SYSTEM = `You draft a reply from an elected official's office to a constituent who contacted them. You are given the constituent's first name, the category and subject, what they wrote, the case's current status, and any facts staff want included.
+
+Return ONLY a JSON object: {"subject":"...","body":"...","promises_to_avoid":["..."]}
+
+Rules:
+- This is official constituent service, NOT campaign communication. Never ask for a donation, vote, volunteer shift, or endorsement, and never mention the campaign or re-election.
+- Use ONLY facts staff provided. Never invent a timeline, an agency action, an outcome, a law, or a commitment. If staff gave no facts, acknowledge the message, say plainly that the office is looking into it, and say what the constituent can expect next only in general terms.
+- Match the category: casework/service requests get a clear status and next step; policy opinions get a respectful acknowledgment of their view (do not argue or pretend to agree if no position was given); complaints get a direct, non-defensive acknowledgment.
+- subject: under 70 characters. body: warm, plain, under 200 words, greets them by first name if provided, signed "Office of [the official]" without inventing a name.
+- promises_to_avoid: 0-3 short notes flagging anything staff should NOT promise in this reply based on the case (e.g. "Don't commit to a decision date the agency hasn't given"). Empty array if none.
+- Return JSON only.`;
+// office_briefing (Governing mode): aggregate casework health -> a short
+// read for the chief of staff. Aggregates only (buildOfficeSnapshot).
+const OFFICE_BRIEFING_SYSTEM = `You brief an elected official's chief of staff on their constituent-services workload, given ONLY an aggregate JSON snapshot (counts, overdue cases, median days to resolve, categories, most common subject terms).
+
+Return ONLY a JSON object: {"headline":"...","whats_working":"...","needs_attention":["..."],"recurring_issue":"..."}
+
+Rules:
+- headline: one sentence on the overall state of the office's casework, citing a real number from the snapshot.
+- whats_working: one sentence, or an empty string if the numbers show nothing working well. Never invent praise.
+- needs_attention: 1-3 concrete actions, each citing the specific number that makes it matter (overdue count, urgent count, oldest active case age, waiting-on-agency backlog).
+- recurring_issue: if top_subject_terms shows a term raised repeatedly, one sentence suggesting the office address it proactively (a newsletter item, an agency follow-up, a town-hall topic). Empty string if none.
+- Base everything strictly on the snapshot. No campaign or fundraising suggestions — this is official office work.
+- Return JSON only.`;
 // endorsement_ask: a personalized ask to a named organization/leader —
 // distinct from donor asks and media pitches.
 const ENDORSEMENT_ASK_SYSTEM = `You write a personalized endorsement request to a specific organization or community leader, given their name and the real reason they're a fit, as staff describe it.
@@ -1162,6 +1189,10 @@ function systemFor(purpose) {
         return INTERVIEW_PREP_SYSTEM;
     if (purpose === 'endorsement_ask')
         return ENDORSEMENT_ASK_SYSTEM;
+    if (purpose === 'constituent_reply')
+        return CONSTITUENT_REPLY_SYSTEM;
+    if (purpose === 'office_briefing')
+        return OFFICE_BRIEFING_SYSTEM;
     if (purpose === 'quick_insight')
         return QUICK_INSIGHT_SYSTEM;
     if (purpose === 'doorstep_pitch')
@@ -1491,6 +1522,12 @@ function buildPrompt(b) {
     if (b.purpose === 'interview_prep') {
         return `Interview format and likely topics (JSON):\n${b.context}\n\nBuild the interview prep sheet.`;
     }
+    if (b.purpose === 'constituent_reply') {
+        return `One constituent case and the facts staff want included (JSON):\n${b.context}\n\nDraft the office's reply.`;
+    }
+    if (b.purpose === 'office_briefing') {
+        return `Aggregate constituent-services snapshot (JSON):\n${b.context}\n\nWrite the office briefing.`;
+    }
     if (b.purpose === 'endorsement_ask') {
         return `Organization/leader and the real reason for the fit (JSON):\n${b.context}\n\nDraft the endorsement request.`;
     }
@@ -1603,6 +1640,8 @@ Deno.serve(async (req) => {
         body.purpose === 'mistake_response' ||
         body.purpose === 'interview_prep' ||
         body.purpose === 'endorsement_ask' ||
+        body.purpose === 'constituent_reply' ||
+        body.purpose === 'office_briefing' ||
         body.purpose === 'quick_insight' ||
         body.purpose === 'turf_briefing' ||
         body.purpose === 'door_condition_briefing' ||

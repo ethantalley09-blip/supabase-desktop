@@ -18,6 +18,8 @@ export const PERMISSION_KEYS = [
     'compliance.manage',
     'compete.view',
     'compete.manage',
+    'governing.view',
+    'governing.manage',
     'turf.view',
     'turf.manage',
     'exports.run',

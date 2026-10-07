@@ -6,6 +6,7 @@ import { ExportButton } from '@/features/export/ExportButton';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { supabase } from '@/lib/supabase/client';
+import { ModeSwitch } from './ModeSwitch';
 import { OverviewTab } from './tabs/OverviewTab';
 import { useProject } from './useProjects';
 // Every tab except Overview is code-split: the app paints with a small entry
@@ -19,6 +20,7 @@ const FundraisingTab = lazy(() => import('@/features/fundraising/FundraisingTab'
 const AiCenterTab = lazy(() => import('@/features/ai/AiCenterTab').then((m) => ({ default: m.AiCenterTab })));
 const TurfTab = lazy(() => import('@/features/turf/TurfTab').then((m) => ({ default: m.TurfTab })));
 const TeamTab = lazy(() => import('./tabs/TeamTab').then((m) => ({ default: m.TeamTab })));
+const GoverningTab = lazy(() => import('@/features/governing/GoverningTab').then((m) => ({ default: m.GoverningTab })));
 const IntegrationsTab = lazy(() => import('@/features/integrations/IntegrationsTab').then((m) => ({ default: m.IntegrationsTab })));
 function TabLoading() {
     return <p className="p-6 text-sm text-neutral-400">Loading…</p>;
@@ -49,6 +51,11 @@ export function ProjectDetailsPage() {
     const showAi = Boolean(aiEnt.data && canUseAi.data);
     const showCompete = Boolean(canViewCompete.data);
     const showIntegrations = Boolean(integrationsEnt.data && canViewIntegrations.data);
+    // Governing mode (0042): the Office tab exists only while the project is
+    // governing. Switching back to campaign hides it but keeps every case.
+    const canViewGoverning = useHasPermission(project?.org_id, 'governing.view');
+    const canManageProjects = useHasPermission(project?.org_id, 'projects.manage');
+    const showGoverning = Boolean(project?.mode === 'governing' && canViewGoverning.data);
     // Deep link from an AI-dashboard card to its working tool: switch to the
     // hosting tab, then scroll once that tab's content has mounted. No-op if
     // the tab isn't available (e.g. fundraising module not purchased).
@@ -58,6 +65,8 @@ export function ProjectDetailsPage() {
         if (loc.tab === 'compete' && !showCompete)
             return;
         if (loc.tab === 'integrations' && !showIntegrations)
+            return;
+        if (loc.tab === 'governing' && !showGoverning)
             return;
         setTab(loc.tab);
         setTimeout(() => document.getElementById(loc.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
@@ -138,15 +147,21 @@ export function ProjectDetailsPage() {
             </p>
           </div>
         </div>
-        <ExportButton datasets={exportDatasets} filePrefix={project.name.toLowerCase().replace(/\s+/g, '-')}/>
+        <div className="flex items-center gap-2">
+          <ModeSwitch project={project} canManage={Boolean(canManageProjects.data)}/>
+          <ExportButton datasets={exportDatasets} filePrefix={project.name.toLowerCase().replace(/\s+/g, '-')}/>
+        </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-6">
-        <Tabs.Root value={tab} onValueChange={setTab}>
+        <Tabs.Root value={tab === 'governing' && !showGoverning ? 'overview' : tab} onValueChange={setTab}>
           <Tabs.List className="mb-4 inline-flex gap-1 rounded-lg bg-neutral-100 p-1">
             <Tabs.Trigger value="overview" className={tabTriggerClass}>
               Overview
             </Tabs.Trigger>
+            {showGoverning && (<Tabs.Trigger value="governing" className={tabTriggerClass}>
+                Office
+              </Tabs.Trigger>)}
             {showFundraising && (<Tabs.Trigger value="fundraising" className={tabTriggerClass}>
                 Fundraising
               </Tabs.Trigger>)}
@@ -177,6 +192,9 @@ export function ProjectDetailsPage() {
             <OverviewTab project={project} onOpenTool={openTool}/>
           </Tabs.Content>
           <Suspense fallback={<TabLoading />}>
+          {showGoverning && (<Tabs.Content value="governing">
+              <GoverningTab project={project}/>
+            </Tabs.Content>)}
           {showFundraising && (<Tabs.Content value="fundraising">
               <FundraisingTab project={project}/>
             </Tabs.Content>)}

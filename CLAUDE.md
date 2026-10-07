@@ -91,8 +91,10 @@ test` are the only automated correctness checks left.
   role authenticated;` + `select set_config('request.jwt.claims',
   json_build_object('sub', '<uuid>', 'role','authenticated')::text, true);`
   before each assertion. Every other RLS-protected table still has no pgTAP
-  coverage (docs/TODO.md #8) — this only closes the gap for the two tables
-  this session touched.
+  coverage (docs/TODO.md #8) — plus `door_attributes_rls_test.sql` (0039),
+  which additionally asserts the roll-up trigger's behaviour, not just RLS:
+  address/street normalization matching the JS, distinct-observer dedup, and
+  the vocabulary check constraint rejecting an off-list tag.
 - Test users (after seed): carol@example.com (Owner), finn@example.com
   (Canvasser), admin@lynx.app (SuperAdmin → /admin). All `password123`.
 - Native shell check: `cargo build` in `src-tauri/` (slow first time; run
@@ -616,7 +618,150 @@ caller's JWT, confirms active org membership, then checks the org-scoped
   `src/features/turf/route.ts` (city/ward parsing, walk-order optimization,
   turf splitting) is unit-tested in `route.test.ts`; `useTurf.ts` re-exports
   it. Follow this split for new algorithmic code.
-- **Migrations are numbered; we're at `0038`.** `0037`/`0038` add the generic
+  **Door Intelligence** (`0039_door_attributes.sql`, 3 new purposes, 82 total):
+  structured door-condition capture — seven canvasser-supplied tags
+  (`no_trespassing`/`hostile`/`dogs`/`gated_home`/`hoa_community`/`apartment`/
+  `senior_center`) replacing the fragile substring match on the word
+  "hostile" that `turfBriefingMath.js` still uses for persuadability. Design
+  spec: `docs/DOOR_INTELLIGENCE_PRD.md`. Evidence rides on `canvass_visits`
+  (new `observed_attributes`/`contradicted_attributes` columns, vocabulary
+  locked by a check constraint since there is no compile-time typing left);
+  a `security definer` trigger rolls it into `door_attributes`, keyed by
+  ADDRESS (a gate is a parcel fact, not a voter fact) using the exact
+  `normalizeAddress`/`streetName` derivations from `households.js` /
+  `neighborhoodProof.js` — the pgTAP suite asserts the SQL and JS agree, so
+  don't change one without the other. **Confidence is never stored**: it is a
+  pure function of evidence + wall-clock in `doorAttributes.js`, so no
+  scheduler is needed and a cached number can never contradict its evidence.
+  Each tag's `class` (legal/safety/hazard/access/facility) drives decay
+  half-life, evidence threshold, routing authority, and AI exposure. Two
+  overrides live in `resolveTier` as branches, not thresholds, specifically so
+  they can't be tuned away: `no_trespassing` is authoritative from ONE
+  observer, and `hostile` can NEVER reach hard-exclusion tier on one person's
+  word regardless of the arithmetic. **The class firewall
+  (`getRoutingAttributes`) is the load-bearing safety control** — safety-class
+  tags must never reach routing, ETA, scoring, or any AI payload; tests in
+  `doorAttributes.test.js` / `walkListEta.test.js` assert it, keep them.
+  `streetRisk.js` owns the k-anonymity floor (a street's safety signal is
+  exposed only at 2+ distinct addresses) and `buildConditionSnapshot` is the
+  ONLY function permitted to build a door-condition AI payload, so no future
+  caller can bypass the floor by assembling its own. Walk-list generation:
+  `walkListFilter.js` (hard exclusions, never silent — every removed door
+  keeps a reason), `walkListAssign.js` (a senior facility is never
+  auto-assigned to someone untrained), `walkListEta.js` (minutes/door measured
+  from the project's OWN visit timestamps; returns null, never a guessed
+  constant, below sample size), `walkListScore.js` (safety/access/density with
+  a **safety gate implemented as a branch** — a dangerous route is flagged
+  REVIEW no matter how well it scores elsewhere). `conditionReview.js` +
+  `ConditionReviewQueue.jsx` ship the governance surface in v1, including the
+  equity audit — deliberately not deferred, since an audit added after the
+  data exists audits a problem you already have. UI:
+  `DoorConditionPanel.jsx` (capture chips in the Ballot-chase table; inherited
+  tags pre-fill so the median door costs zero taps, and ONE write per commit —
+  never one per chip, which would add a `canvass_visits` row per toggle and
+  corrupt Best Time to Knock), `StreetRiskBriefing.jsx`,
+  `ConditionReviewQueue.jsx`, both mounted in `TurfTab.jsx`. Verified live:
+  migration applied via `db:migrate`, 12 pgTAP assertions green, and the whole
+  capture → trigger → exclusion path exercised in-browser as a seeded
+  `campaign_committee` Owner.
+  **Door Intelligence round 2 — Python scoring service + a TypeScript
+  island.** Owner chose "Python backend + .tsx in main app" explicitly, so two
+  deliberate exceptions to the JS-only rule now exist and both are fenced:
+  * `python_svc/` is a **stateless, database-free FastAPI service** (run:
+    `npm run svc`, test: `npm run svc:test`, 45 pytest cases). It never holds
+    Supabase credentials — callers send rows they already fetched under their
+    OWN RLS session and get derived numbers back. That is what keeps invariant
+    #1 intact; a service with a service-role key would sit outside RLS and
+    become a way to read rows the caller couldn't. It is also **optional**: the
+    same maths still runs in-app, so a dead service degrades one diagnostic
+    panel instead of breaking canvassing (`useScoringService.ts` treats it that
+    way; Vite proxies `/door-intel` → `127.0.0.1:8555`).
+  * **The scoring engine is therefore implemented twice**, which is a real
+    drift hazard, so it is mechanically checked rather than trusted:
+    `python_svc/fixtures/parity_cases.json` holds hand-authored input/expected
+    pairs and BOTH suites assert against it (`python_svc/tests/test_parity.py`
+    and `src/features/turf/parity.test.js`, 24 cases each). Change a constant
+    on one side and the other side's suite goes red. Expected values are
+    derived from the PRD formulas, never captured from either implementation —
+    captured output would only prove both agree on a bug. **Do not edit one
+    engine without the other.** Gotcha found doing this: Python's `round()` is
+    banker's rounding and JS `Math.round` is half-up, so `js_round`/`js_round_to`
+    in `door_intelligence.py` are used for every rounded value.
+  * `tsconfig.json` is **back, but scoped**: `checkJs: false` so the existing
+    untyped JS is read for inference and never checked, and `tsc` is NOT in
+    `npm run build` — `npm run typecheck` is a separate on-demand script, so a
+    type error can never block a deploy. Only the new `.ts`/`.tsx` files are
+    typed. `src/components/ui/button.d.ts` types the untyped `button.jsx` for
+    the .tsx consumers rather than converting it.
+  * New features: **offline capture queue** (`offlineQueue.ts` — the PRD's
+    acknowledged A2 gap; client-generated ids so a retry can never double-log a
+    visit and corrupt Best Time to Knock, and a failed write is never dropped,
+    only re-queued with a higher attempt count), **per-door evidence timeline**
+    (`conditionTimelineMath.ts` + `ConditionTimeline.tsx` — who observed what,
+    when, and what contradicted it; `silentOn` is shown for every tag and the
+    reader judges, unlike the scorer which only counts it for unmissable tags),
+    and the **notes backfill** (`backfill.py`, dry-run by default and the only
+    thing the API exposes; its negation guard is the point — "Not hostile, just
+    busy" must not flag, which is exactly what the legacy substring match gets
+    wrong; emitted rows go through `canvass_visits` so the 0039 trigger stays
+    the single path into door state).
+  * **Filesystem gotcha hit a THIRD time**: `conditionTimeline.ts` +
+    `ConditionTimeline.tsx` collided on this case-insensitive box and rolldown
+    silently resolved the component import to the math module — `npm run test`
+    and `tsc` both passed, only `npm run build` caught it. Renamed to
+    `conditionTimelineMath.ts`. The `Math` suffix rule is not optional.
+- **Retention / switching-cost round (0042-0043, 4 new purposes, 86 total).**
+  Owner goal: make Lynx costly to leave through VALUE, never lock-in — the
+  Export button must keep covering everything. Growth research behind it:
+  `reports/Lynx growth and retention system.md`.
+  * **Governing mode** (`0042_governing_mode.sql`, `features/governing/`):
+    `projects.mode` = `campaign`|`governing` (+ `office_title`,
+    `term_ends_on`), switched by `projects/ModeSwitch.jsx` in the project
+    header. Same project, same data, so a winning campaign keeps paying
+    through its term and flips back for re-election. Office tab =
+    `constituent_cases` + append-only `case_updates` (status changes logged
+    by trigger), new `governing.view`/`governing.manage` (Owner/Manager/Media,
+    all 4 org types). Purposes `constituent_reply` (first name only, never
+    contact details — `buildReplyContext`; prompt forbids any campaign ask)
+    and `office_briefing` (aggregates only — `buildOfficeSnapshot`).
+  * **Workspace** (`0043_workspace.sql`, `features/workspace/`) — the
+    "what do I do next?" layer over 80+ tools, built for ease of use:
+    Search & Jump (`CommandPalette.jsx`, Ctrl/Cmd+K, header button), Ask
+    Lynx (`AskLynx.jsx`, purpose `app_guide`), Today + Launch Checklist +
+    My Tasks + Weekly Recap at the top of Overview (`WorkspaceHome.jsx`),
+    and a Tasks tab (`team_tasks`, trigger-stamped completion). One
+    `available` map in `ProjectDetailsPage` (which tabs this viewer can open)
+    feeds all of them, and `buildNavIndex` (`navMath.js`) is the single list
+    of destinations — Ask Lynx sends the model ONLY that list and
+    `resolveGuideIds` drops any id the model invents, so it can never offer
+    a button to something the viewer can't open. Add a new tab/action there
+    when you add one to the app. `weekly_recaps` (purpose `weekly_recap`) is
+    projects.manage-only because its stats include money raised. Today and
+    the checklist are pure functions of already-cached queries
+    (`workspaceMath.js`); checklist steps are detected from real data, never
+    hand-ticked. Eager-bundle note: Overview imports this, so keep its
+    imports light (`useOrgMembers` lives in `useWorkspace.js` precisely so
+    Overview doesn't pull in `useFundraisingAi.js`). pgTAP:
+    `supabase/tests/governing_workspace_rls_test.sql`.
+  * **Workspace round 2** (`0044_notifications.sql`): **notifications bell**
+    (`NotificationBell.jsx`) — `notifications` rows are written ONLY by
+    security-definer triggers on `team_tasks` (assigned / finished) and
+    `constituent_cases` (assigned); clients get select-own plus a
+    COLUMN-level `update (read_at)` grant, no insert, and `notify()` is
+    revoked from clients. It never notifies you about your own action. Case
+    notifications carry the subject only, never case details. Same migration
+    adds assignee guards: a task assignee must be an active org member, and
+    a case assignee must hold `governing.view`
+    (`member_has_permission(org, profile, perm)`). **Pinned & recent** in
+    Search & Jump: pins live in `dashboard_layouts.layout.pinned` (so
+    `AiDashboard`'s save now spreads the existing layout — don't go back to
+    writing `{order, hidden}` alone or pins get wiped); recents are
+    per-device localStorage. **"Start here" tab guides** (`TabGuide.jsx`,
+    config in `guideMath.js`): a test asserts every tab in `TAB_DESTINATIONS`
+    has a guide and every guide action is a real nav id, so adding a tab
+    without a guide fails `npm run test`. pgTAP:
+    `supabase/tests/notifications_rls_test.sql`.
+- **Migrations are numbered; we're at `0044`.** `0037`/`0038` add the generic
   Integrations layer (`integration_connectors`, write-only `integration_secrets`,
   `message_events`/`event_registrations`/`petition_signatures`) — see
   `IntegrationsTab.jsx` and `supabase/functions/integrations-webhook`/

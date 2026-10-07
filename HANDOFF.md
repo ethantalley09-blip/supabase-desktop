@@ -1,6 +1,6 @@
 # Lynx — Handoff
 
-Branch `feat/lynx-platform` · TS→JS conversion + AI Advisor rounds + §8 Survey + hr.view fix are committed (`d0ff318`) · **this session's generic Integrations layer (§14-15/§17/§18) is uncommitted** · updated Jul 28, 2026
+Branch `feat/lynx-platform` · **everything through the generic Integrations layer is committed** (`HEAD` = `71fbdf8`) · working tree clean · updated Jul 30, 2026
 
 ## Links
 

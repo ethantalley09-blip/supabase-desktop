@@ -1075,6 +1075,34 @@ Rules:
 - recurring_issue: if top_subject_terms shows a term raised repeatedly, one sentence suggesting the office address it proactively (a newsletter item, an agency follow-up, a town-hall topic). Empty string if none.
 - Base everything strictly on the snapshot. No campaign or fundraising suggestions — this is official office work.
 - Return JSON only.`;
+// app_guide (Ask Lynx): plain-English help that routes the user to the
+// right place. Gets ONLY this viewer's reachable destinations
+// (buildGuideContext) and the client discards any id not in that list
+// (resolveGuideIds), so it can't send anyone to a tool they can't open.
+const APP_GUIDE_SYSTEM = `You are Ask Lynx, the in-app guide for Lynx, a campaign and advocacy platform. The user asks how to do something or what to do. You get their question and the list of destinations (tabs, actions, tools) THIS user can open, each with an id, type, label, and where it lives.
+
+Return ONLY a JSON object: {"answer":"...","steps":["..."],"destination_ids":["..."]}
+
+Rules:
+- answer: 1-2 friendly sentences, plain language, no jargon. Answer the actual question.
+- steps: 0-5 short, concrete click-by-click steps using the exact labels from the destination list (e.g. "Open the Turf Map tab", "Click Import voters"). Empty array if the question doesn't need steps.
+- destination_ids: 1-3 ids copied EXACTLY from the provided list, best first. Never invent an id or a feature. If nothing in the list fits, return an empty array and say plainly in answer that this isn't something Lynx does (or that their role doesn't have access to it).
+- Don't give legal, compliance, or election-law advice; point to the Compliance tab if it is in the list.
+- Return JSON only.`;
+// weekly_recap: manager's weekly summary from week-over-week aggregates
+// (buildWeeklyStats). Saved to weekly_recaps.
+const WEEKLY_RECAP_SYSTEM = `You write a short weekly recap for a campaign or advocacy team's manager. You get aggregate numbers for this week so far and the SAME number of days last week (doors, conversations, contact rate, active canvassers, gifts, money raised, constituent cases, tasks done, open tasks).
+
+Return ONLY a JSON object: {"headline":"...","wins":["..."],"watch":["..."],"next_week_focus":["..."]}
+
+Rules:
+- headline: one sentence capturing the week, citing one real number.
+- wins: 0-3 items, each citing a real number that went up or a real accomplishment. Empty if nothing improved — never invent praise.
+- watch: 0-3 items, each citing a real number that dropped or is stuck (compare to last week). Empty if nothing is concerning.
+- next_week_focus: 1-3 concrete, doable priorities that follow from the numbers.
+- Compare like with like: these are equal-length spans, so a drop is a real drop. If both weeks are near zero, say activity is too low to compare and focus next week on getting started.
+- Use ONLY the numbers given. No names, no fabricated causes, no legal advice.
+- Return JSON only.`;
 // endorsement_ask: a personalized ask to a named organization/leader —
 // distinct from donor asks and media pitches.
 const ENDORSEMENT_ASK_SYSTEM = `You write a personalized endorsement request to a specific organization or community leader, given their name and the real reason they're a fit, as staff describe it.
@@ -1193,6 +1221,10 @@ function systemFor(purpose) {
         return CONSTITUENT_REPLY_SYSTEM;
     if (purpose === 'office_briefing')
         return OFFICE_BRIEFING_SYSTEM;
+    if (purpose === 'app_guide')
+        return APP_GUIDE_SYSTEM;
+    if (purpose === 'weekly_recap')
+        return WEEKLY_RECAP_SYSTEM;
     if (purpose === 'quick_insight')
         return QUICK_INSIGHT_SYSTEM;
     if (purpose === 'doorstep_pitch')
@@ -1525,6 +1557,18 @@ function buildPrompt(b) {
     if (b.purpose === 'constituent_reply') {
         return `One constituent case and the facts staff want included (JSON):\n${b.context}\n\nDraft the office's reply.`;
     }
+    if (b.purpose === 'app_guide') {
+        return `The user's question and the destinations they can open (JSON):
+${b.context}
+
+Answer and route them.`;
+    }
+    if (b.purpose === 'weekly_recap') {
+        return `This week vs the same point last week (JSON):
+${b.context}
+
+Write the weekly recap.`;
+    }
     if (b.purpose === 'office_briefing') {
         return `Aggregate constituent-services snapshot (JSON):\n${b.context}\n\nWrite the office briefing.`;
     }
@@ -1642,6 +1686,8 @@ Deno.serve(async (req) => {
         body.purpose === 'endorsement_ask' ||
         body.purpose === 'constituent_reply' ||
         body.purpose === 'office_briefing' ||
+        body.purpose === 'app_guide' ||
+        body.purpose === 'weekly_recap' ||
         body.purpose === 'quick_insight' ||
         body.purpose === 'turf_briefing' ||
         body.purpose === 'door_condition_briefing' ||

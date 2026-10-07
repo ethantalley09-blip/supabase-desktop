@@ -1,9 +1,17 @@
 import * as Tabs from '@radix-ui/react-tabs';
-import { ArrowLeft } from 'lucide-react';
-import { lazy, Suspense, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, HelpCircle, Search } from 'lucide-react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ExportButton } from '@/features/export/ExportButton';
+import { useAvailableTools } from '@/features/rbac/useAvailableTools';
+import { useDashboardLayout, useSaveDashboardLayout } from '@/features/rbac/useDashboardLayout';
 import { useHasPermission } from '@/features/rbac/useHasPermission';
+import { AskLynx } from '@/features/workspace/AskLynx';
+import { CommandPalette } from '@/features/workspace/CommandPalette';
+import { buildNavIndex, pushRecent, togglePin } from '@/features/workspace/navMath';
+import { NotificationBell } from '@/features/workspace/NotificationBell';
+import { TabGuide } from '@/features/workspace/TabGuide';
+import { readRecents, writeRecents } from '@/features/workspace/useWorkspace';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { supabase } from '@/lib/supabase/client';
 import { ModeSwitch } from './ModeSwitch';
@@ -21,6 +29,7 @@ const AiCenterTab = lazy(() => import('@/features/ai/AiCenterTab').then((m) => (
 const TurfTab = lazy(() => import('@/features/turf/TurfTab').then((m) => ({ default: m.TurfTab })));
 const TeamTab = lazy(() => import('./tabs/TeamTab').then((m) => ({ default: m.TeamTab })));
 const GoverningTab = lazy(() => import('@/features/governing/GoverningTab').then((m) => ({ default: m.GoverningTab })));
+const TasksTab = lazy(() => import('@/features/workspace/TasksTab').then((m) => ({ default: m.TasksTab })));
 const IntegrationsTab = lazy(() => import('@/features/integrations/IntegrationsTab').then((m) => ({ default: m.IntegrationsTab })));
 function TabLoading() {
     return <p className="p-6 text-sm text-neutral-400">Loading…</p>;
@@ -56,6 +65,49 @@ export function ProjectDetailsPage() {
     const canViewGoverning = useHasPermission(project?.org_id, 'governing.view');
     const canManageProjects = useHasPermission(project?.org_id, 'projects.manage');
     const showGoverning = Boolean(project?.mode === 'governing' && canViewGoverning.data);
+    // One map of what this viewer can open, shared by Search & Jump, Ask
+    // Lynx, Today, and the Launch Checklist so none of them ever offers a
+    // destination that isn't there.
+    const available = useMemo(() => ({
+        fundraising: showFundraising,
+        compliance: showCompliance,
+        ai: showAi,
+        compete: showCompete,
+        integrations: showIntegrations,
+        governing: showGoverning
+    }), [showFundraising, showCompliance, showAi, showCompete, showIntegrations, showGoverning]);
+    const { tools } = useAvailableTools(project?.org_id);
+    const navIndex = useMemo(() => buildNavIndex({ available, tools }), [available, tools]);
+    const navigate = useNavigate();
+    // Pins follow the user across devices (stored in their dashboard layout
+    // row); recents are per-device. Both hold nav-index ids.
+    const { data: layout } = useDashboardLayout(project?.org_id);
+    const saveLayout = useSaveDashboardLayout();
+    const pinned = layout?.pinned ?? [];
+    const onTogglePin = (id) => saveLayout.mutate({ orgId: project.org_id, layout: { ...(layout ?? {}), pinned: togglePin(pinned, id) } });
+    const recentsKey = `lynx.recents.${projectId}`;
+    const [recents, setRecents] = useState(() => readRecents(recentsKey));
+    // The page instance survives a project-to-project route change (e.g.
+    // from a notification), so reload that project's recents.
+    useEffect(() => setRecents(readRecents(recentsKey)), [recentsKey]);
+    const onChosen = (id) => {
+        const next = pushRecent(recents, id);
+        setRecents(next);
+        writeRecents(recentsKey, next);
+    };
+    const [paletteOpen, setPaletteOpen] = useState(false);
+    const [askOpen, setAskOpen] = useState(false);
+    useEffect(() => {
+        const onKey = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                setAskOpen(false);
+                setPaletteOpen((o) => !o);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
     // Deep link from an AI-dashboard card to its working tool: switch to the
     // hosting tab, then scroll once that tab's content has mounted. No-op if
     // the tab isn't available (e.g. fundraising module not purchased).
@@ -68,9 +120,30 @@ export function ProjectDetailsPage() {
             return;
         if (loc.tab === 'governing' && !showGoverning)
             return;
+        if (loc.tab === 'compliance' && !showCompliance)
+            return;
+        if (loc.tab === 'ai' && !showAi)
+            return;
         setTab(loc.tab);
-        setTimeout(() => document.getElementById(loc.anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        if (!loc.anchor) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+        // Lazy tabs mount after their chunk downloads, so keep looking for the
+        // anchor briefly instead of giving up after one try.
+        let tries = 0;
+        const find = () => {
+            const el = document.getElementById(loc.anchor);
+            if (el)
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            else if (tries++ < 20)
+                setTimeout(find, 100);
+        };
+        setTimeout(find, 50);
     };
+    // A hidden tab (e.g. Office after switching back to campaign mode) falls
+    // back to Overview rather than rendering an empty panel.
+    const effectiveTab = tab === 'governing' && !showGoverning ? 'overview' : tab;
     if (isLoading)
         return <p className="p-8 text-sm text-neutral-500">Loading project…</p>;
     if (error || !project)
@@ -148,20 +221,33 @@ export function ProjectDetailsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setPaletteOpen(true)} className="flex h-8 items-center gap-2 rounded-md border border-neutral-300 bg-white px-2.5 text-xs text-neutral-500 hover:bg-neutral-50" title="Search and jump anywhere (Ctrl/⌘ K)">
+            <Search className="h-3.5 w-3.5"/>
+            <span className="hidden sm:inline">Search</span>
+            <kbd className="hidden rounded border border-neutral-200 px-1 text-[10px] sm:inline">Ctrl K</kbd>
+          </button>
+          <NotificationBell currentProjectId={project.id} onGo={openTool} navigate={navigate}/>
+          <button type="button" onClick={() => { setPaletteOpen(false); setAskOpen(true); }} className="flex h-8 items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100" title="Ask how to do anything">
+            <HelpCircle className="h-3.5 w-3.5"/>
+            Ask Lynx
+          </button>
           <ModeSwitch project={project} canManage={Boolean(canManageProjects.data)}/>
           <ExportButton datasets={exportDatasets} filePrefix={project.name.toLowerCase().replace(/\s+/g, '-')}/>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-6">
-        <Tabs.Root value={tab === 'governing' && !showGoverning ? 'overview' : tab} onValueChange={setTab}>
-          <Tabs.List className="mb-4 inline-flex gap-1 rounded-lg bg-neutral-100 p-1">
+        <Tabs.Root value={effectiveTab} onValueChange={setTab}>
+          <Tabs.List className="mb-4 flex flex-wrap gap-1 rounded-lg bg-neutral-100 p-1">
             <Tabs.Trigger value="overview" className={tabTriggerClass}>
               Overview
             </Tabs.Trigger>
             {showGoverning && (<Tabs.Trigger value="governing" className={tabTriggerClass}>
                 Office
               </Tabs.Trigger>)}
+            <Tabs.Trigger value="tasks" className={tabTriggerClass}>
+              Tasks
+            </Tabs.Trigger>
             {showFundraising && (<Tabs.Trigger value="fundraising" className={tabTriggerClass}>
                 Fundraising
               </Tabs.Trigger>)}
@@ -188,10 +274,14 @@ export function ProjectDetailsPage() {
             </Tabs.Trigger>
           </Tabs.List>
 
+          <TabGuide tab={effectiveTab} index={navIndex} onGo={openTool}/>
           <Tabs.Content value="overview">
-            <OverviewTab project={project} onOpenTool={openTool}/>
+            <OverviewTab project={project} onOpenTool={openTool} available={available}/>
           </Tabs.Content>
           <Suspense fallback={<TabLoading />}>
+          <Tabs.Content value="tasks">
+            <TasksTab project={project} onGo={openTool}/>
+          </Tabs.Content>
           {showGoverning && (<Tabs.Content value="governing">
               <GoverningTab project={project}/>
             </Tabs.Content>)}
@@ -222,5 +312,7 @@ export function ProjectDetailsPage() {
           </Suspense>
         </Tabs.Root>
       </main>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} index={navIndex} onGo={openTool} pinned={pinned} recents={recents} onTogglePin={onTogglePin} onChosen={onChosen}/>
+      <AskLynx open={askOpen} onClose={() => setAskOpen(false)} orgId={project.org_id} projectId={project.id} index={navIndex} aiEnabled={showAi} onGo={openTool}/>
     </div>);
 }

@@ -6,7 +6,7 @@ describe('TOOL_LOCATIONS', () => {
             const loc = TOOL_LOCATIONS[tool.id];
             expect(loc, `missing location for ${tool.id}`).toBeDefined();
             expect(loc.anchor).toBe(`tool-${tool.id}`);
-            expect(['ai', 'turf', 'comms', 'fundraising', 'compete', 'governing', 'integrations']).toContain(loc.tab);
+            expect(['overview', 'ai', 'turf', 'comms', 'fundraising', 'compete', 'governing', 'integrations']).toContain(loc.tab);
         }
     });
 });

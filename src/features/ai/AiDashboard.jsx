@@ -13,6 +13,7 @@ const CATEGORY_LABEL = {
 };
 const TAB_HINT = {
     ai: 'Below on this page',
+    overview: 'Opens Overview tab',
     turf: 'Opens Turf Map tab',
     comms: 'Opens Comms tab',
     fundraising: 'Opens Fundraising tab',
@@ -33,7 +34,9 @@ export function AiDashboard({ orgId, onOpenTool }) {
     const { visible, hiddenTools } = useMemo(() => arrangeTools(tools, layout), [tools, layout]);
     const cats = useMemo(() => ['general', 'turf', 'comms', 'fundraising', 'compete', 'governing'].filter((c) => tools.some((t) => t.category === c)), [tools]);
     const shown = activeCat === 'all' ? visible : visible.filter((t) => t.category === activeCat);
-    const persist = (order, hidden) => save.mutate({ orgId, layout: { order, hidden } });
+    // Spread the saved layout so other keys stored there (Search & Jump pins)
+    // survive a card rearrange.
+    const persist = (order, hidden) => save.mutate({ orgId, layout: { ...(layout ?? {}), order, hidden } });
     const onDrop = (targetId) => {
         if (!dragId)
             return;

@@ -11,13 +11,14 @@ import { canvasserLeaderboard, scoreDoors } from '@/features/turf/doorstep';
 import { useVoterRecords } from '@/features/turf/useTurf';
 import { useEntitlement } from '@/lib/entitlements/entitlements';
 import { useQuickInsight } from '@/lib/ai/useQuickInsight';
+import { WorkspaceHome } from '@/features/workspace/WorkspaceHome';
 import { computeLanguageCoverage, computeMomentum, dailySeries, pct, sparklinePoints } from './overviewMath';
 // The Overview command center: every number is instant client-side math on
 // queries React Query already caches (no AI calls, no extra round-trips), and
 // every "next move" deep-links to the tool that does it. Sections whose data
 // the viewer's role can't read (RLS) simply show zeros/hide — presentation
 // only, enforcement stays in the database.
-export function OverviewTab({ project, onOpenTool }) {
+export function OverviewTab({ project, onOpenTool, available }) {
     const { data: voters } = useVoterRecords(project.id);
     const { data: donations } = useDonations(project.id);
     const { data: totalCents } = useDonationTotal(project.id);
@@ -86,6 +87,10 @@ export function OverviewTab({ project, onOpenTool }) {
         enabled: showAi && stats.v.length + (donations?.length ?? 0) > 0
     });
     return (<div className="space-y-4">
+      {/* Workspace (0043): setup checklist, Today, my tasks, weekly recap --
+            the "what do I do next?" layer, above the numbers. */}
+      <WorkspaceHome project={project} available={available} onGo={onOpenTool}/>
+
       {/* Today's Briefing: one AI sentence on top of the exact numbers below,
             never a replacement for them. Silently absent if it fails or the
             AI module is off — the rest of the tab works identically either way. */}
